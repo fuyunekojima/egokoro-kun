@@ -444,13 +444,23 @@ export class GameApp {
     });
   }
 
-  private toggleReady(): void {
+  private async toggleReady(): Promise<void> {
     if (!this.gameState.session || !this.gameState.currentPlayer) return;
 
-    this.gameManager.toggleReady(
-      this.gameState.session.id,
-      this.gameState.currentPlayer.id
-    );
+    try {
+      const success = await this.gameManager.toggleReady(
+        this.gameState.session.id,
+        this.gameState.currentPlayer.id
+      );
+      
+      if (!success) {
+        console.error('Failed to toggle ready state');
+        this.showError('準備状態の変更に失敗しました');
+      }
+    } catch (error) {
+      console.error('Error toggling ready state:', error);
+      this.showError('準備状態の変更中にエラーが発生しました');
+    }
   }
 
   private startGame(): void {
@@ -560,20 +570,34 @@ export class GameApp {
 
   // Event handlers
   private handlePlayerJoined(data: { session: GameSession; player: Player }): void {
+    console.log('Player joined:', data.player.name);
     this.gameState.session = data.session;
+    this.updateLobbyUI();
     this.updateGameUI();
   }
 
   private handlePlayerLeft(data: { session: GameSession; playerId: string }): void {
+    console.log('Player left:', data.playerId);
     this.gameState.session = data.session;
+    this.updateLobbyUI();
     this.updateGameUI();
   }
 
   private handlePlayerReadyChanged(data: { session: GameSession; player: Player }): void {
     this.gameState.session = data.session;
+    
+    // currentPlayerの状態を更新
     if (data.player.id === this.gameState.currentPlayer?.id) {
       this.gameState.currentPlayer = data.player;
     }
+    
+    // セッション内のプレイヤー情報も更新
+    const playerIndex = this.gameState.session.players.findIndex(p => p.id === data.player.id);
+    if (playerIndex !== -1) {
+      this.gameState.session.players[playerIndex] = data.player;
+    }
+    
+    this.updateLobbyUI();
     this.updateGameUI();
   }
 
@@ -713,6 +737,15 @@ export class GameApp {
       if (session) {
         console.log('Session updated:', session);
         this.gameState.session = session;
+        
+        // currentPlayerの情報を最新に更新
+        if (this.gameState.currentPlayer) {
+          const updatedCurrentPlayer = session.players.find(p => p.id === this.gameState.currentPlayer!.id);
+          if (updatedCurrentPlayer) {
+            this.gameState.currentPlayer = updatedCurrentPlayer;
+          }
+        }
+        
         this.updateLobbyUI();
         this.updateGameUI();
       }
@@ -728,9 +761,18 @@ export class GameApp {
 
     // Subscribe to player state updates
     this.playersUnsubscribe = this.gameManager.subscribeToPlayerStates(sessionId, (players) => {
-      if (this.gameState.session) {
+      if (this.gameState.session && players) {
         console.log('Players updated:', players);
         this.gameState.session.players = players;
+        
+        // currentPlayerの情報も更新
+        if (this.gameState.currentPlayer) {
+          const updatedCurrentPlayer = players.find((p: Player) => p.id === this.gameState.currentPlayer!.id);
+          if (updatedCurrentPlayer) {
+            this.gameState.currentPlayer = updatedCurrentPlayer;
+          }
+        }
+        
         this.updateLobbyUI();
         this.updateGameUI();
       }
