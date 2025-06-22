@@ -285,11 +285,23 @@ export class GameApp {
       return;
     }
 
+    console.log('Attempting to join session:', { sessionId, playerName, hasPassword: !!password });
+    
     this.gameManager.joinSession(sessionId, playerName, password).then(result => {
+      console.log('Join session result:', result);
+      
       if (!result.success) {
+        console.error('Join failed:', result.error);
         this.showError(result.error || '参加に失敗しました');
         return;
       }
+
+      console.log('Join successful, setting game state:', {
+        sessionId: result.session!.id,
+        playerId: result.player!.id,
+        playerName: result.player!.name,
+        totalPlayers: result.session!.players.length
+      });
 
       this.gameState.session = result.session!;
       this.gameState.currentPlayer = result.player!;
@@ -591,7 +603,12 @@ export class GameApp {
 
   // Event handlers
   private handlePlayerJoined(data: { session: GameSession; player: Player }): void {
-    console.log('Player joined:', data.player.name);
+    console.log('Player joined event received:', {
+      playerName: data.player.name,
+      playerId: data.player.id,
+      totalPlayersInSession: data.session.players.length,
+      allPlayerNames: data.session.players.map(p => p.name)
+    });
     this.gameState.session = data.session;
     this.updateLobbyUI();
     this.updateGameUI();
@@ -756,7 +773,12 @@ export class GameApp {
     // Subscribe to session updates
     this.sessionUnsubscribe = this.gameManager.subscribeToSession(sessionId, (session) => {
       if (session) {
-        console.log('Session updated:', session);
+        console.log('Firebase session update received:', {
+          sessionId: session.id,
+          playersCount: session.players.length,
+          playerNames: session.players.map(p => p.name),
+          gameState: session.gameState
+        });
         this.gameState.session = session;
         
         // currentPlayerの情報を最新に更新
@@ -769,6 +791,8 @@ export class GameApp {
         
         this.updateLobbyUI();
         this.updateGameUI();
+      } else {
+        console.log('Firebase session update: session is null');
       }
     });
 

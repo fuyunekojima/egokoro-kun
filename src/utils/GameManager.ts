@@ -90,29 +90,43 @@ export class GameManager {
   }
 
   async joinSession(sessionId: string, playerName: string, password?: string): Promise<{ success: boolean; session?: GameSession; player?: Player; error?: string }> {
+    console.log('joinSession called:', { sessionId, playerName, hasPassword: !!password });
+    
     if (!(await this.ensureAuthenticated())) {
+      console.error('Authentication failed in joinSession');
       return { success: false, error: 'Authentication failed' };
     }
 
     const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) {
+      console.error('Session not found:', sessionId);
       return { success: false, error: 'セッションが見つかりません' };
     }
 
+    console.log('Session found for join:', {
+      sessionId: session.id,
+      currentPlayers: session.players.length,
+      playerNames: session.players.map(p => p.name)
+    });
+
     if (session.password && session.password !== password) {
+      console.error('Password mismatch');
       return { success: false, error: 'パスワードが間違っています' };
     }
 
     if (session.gameState === 'playing') {
+      console.error('Game already in progress');
       return { success: false, error: 'ゲーム中のため参加できません' };
     }
 
     if (session.players.length >= session.settings.maxPlayers) {
+      console.error('Session is full');
       return { success: false, error: 'セッションが満員です' };
     }
 
     const existingPlayer = session.players.find((p: Player) => p.name === playerName);
     if (existingPlayer) {
+      console.error('Player name already exists:', playerName);
       return { success: false, error: 'その名前は既に使用されています' };
     }
 
@@ -124,11 +138,24 @@ export class GameManager {
       isHost: false
     };
 
+    console.log('Adding new player:', newPlayer);
     session.players.push(newPlayer);
-    await FirebaseSessionManager.saveSession(session);
-    this.emit('playerJoined', { session, player: newPlayer });
-    
-    return { success: true, session, player: newPlayer };
+    console.log('Session after adding player:', {
+      playersCount: session.players.length,
+      playerNames: session.players.map(p => p.name)
+    });
+
+    try {
+      await FirebaseSessionManager.saveSession(session);
+      console.log('Session saved successfully after player join');
+      this.emit('playerJoined', { session, player: newPlayer });
+      console.log('PlayerJoined event emitted');
+      
+      return { success: true, session, player: newPlayer };
+    } catch (error) {
+      console.error('Failed to save session after player join:', error);
+      return { success: false, error: 'セッションの保存に失敗しました' };
+    }
   }
 
   async leaveSession(sessionId: string, playerId: string): Promise<boolean> {
