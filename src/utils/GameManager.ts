@@ -252,7 +252,7 @@ export class GameManager {
   }
 
   private async selectNextDrawer(session: GameSession): Promise<void> {
-    const availableDrawers = session.players.filter((p: Player) => !session.usedDrawers.includes(p.id));
+    let availableDrawers = session.players.filter((p: Player) => !session.usedDrawers.includes(p.id));
     
     if (availableDrawers.length === 0) {
       session.usedDrawers = [];
@@ -261,11 +261,18 @@ export class GameManager {
         await this.endGame(session);
         return;
       }
+      // Reset after clearing usedDrawers
+      availableDrawers = session.players.filter((p: Player) => !session.usedDrawers.includes(p.id));
     }
 
-    const randomDrawer = availableDrawers[Math.floor(Math.random() * availableDrawers.length)];
-    session.currentDrawer = randomDrawer.id;
-    session.usedDrawers.push(randomDrawer.id);
+    if (availableDrawers.length > 0) {
+      const randomDrawer = availableDrawers[Math.floor(Math.random() * availableDrawers.length)];
+      session.currentDrawer = randomDrawer.id;
+      session.usedDrawers.push(randomDrawer.id);
+    } else {
+      console.error('No available drawers found, ending game');
+      await this.endGame(session);
+    }
   }
 
   private selectRandomTopic(session: GameSession): void {

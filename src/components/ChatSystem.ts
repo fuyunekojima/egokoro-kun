@@ -22,8 +22,13 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
-    this.chatInput.addEventListener('keypress', (e) => {
+    this.chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
+        // Check if IME composition is active (Japanese input)
+        if (e.isComposing || e.keyCode === 229) {
+          return; // Don't send message during IME composition
+        }
+        e.preventDefault();
         this.sendMessage();
       }
     });
