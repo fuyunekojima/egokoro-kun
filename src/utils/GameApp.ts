@@ -344,7 +344,7 @@ export class GameApp {
 
   private initializeChat(): void {
     const chatContainer = document.getElementById('chat-container')!;
-    const chatInput = document.getElementById('chat-input') as HTMLInputElement;
+    const chatInput = document.getElementById('chat-input') as HTMLTextAreaElement;
     const chatMessages = document.getElementById('chat-messages')!;
     const floatingContainer = document.getElementById('floating-messages')!;
 
