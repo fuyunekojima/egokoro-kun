@@ -426,18 +426,40 @@ export class GameApp {
       settingsContainer.style.display = 'block';
     }
 
+    const isGameInProgress = this.gameState.session.gameState === 'playing';
+
     // Update form values
     const maxRoundsInput = document.getElementById('max-rounds') as HTMLInputElement;
     const correctPointsInput = document.getElementById('correct-points') as HTMLInputElement;
     const drawerPointsInput = document.getElementById('drawer-points') as HTMLInputElement;
     const maxPlayersInput = document.getElementById('max-players') as HTMLInputElement;
     const timeLimitInput = document.getElementById('time-limit') as HTMLInputElement;
+    const settingsSubmitBtn = document.querySelector('#settings-form button[type="submit"]') as HTMLButtonElement;
 
-    if (maxRoundsInput) maxRoundsInput.value = this.gameState.session.settings.maxRounds.toString();
-    if (correctPointsInput) correctPointsInput.value = this.gameState.session.settings.correctAnswerPoints.toString();
-    if (drawerPointsInput) drawerPointsInput.value = this.gameState.session.settings.drawerPoints.toString();
-    if (maxPlayersInput) maxPlayersInput.value = this.gameState.session.settings.maxPlayers.toString();
-    if (timeLimitInput) timeLimitInput.value = this.gameState.session.settings.timeLimit.toString();
+    if (maxRoundsInput) {
+      maxRoundsInput.value = this.gameState.session.settings.maxRounds.toString();
+      maxRoundsInput.disabled = isGameInProgress;
+    }
+    if (correctPointsInput) {
+      correctPointsInput.value = this.gameState.session.settings.correctAnswerPoints.toString();
+      correctPointsInput.disabled = isGameInProgress;
+    }
+    if (drawerPointsInput) {
+      drawerPointsInput.value = this.gameState.session.settings.drawerPoints.toString();
+      drawerPointsInput.disabled = isGameInProgress;
+    }
+    if (maxPlayersInput) {
+      maxPlayersInput.value = this.gameState.session.settings.maxPlayers.toString();
+      maxPlayersInput.disabled = isGameInProgress;
+    }
+    if (timeLimitInput) {
+      timeLimitInput.value = this.gameState.session.settings.timeLimit.toString();
+      timeLimitInput.disabled = isGameInProgress;
+    }
+    if (settingsSubmitBtn) {
+      settingsSubmitBtn.disabled = isGameInProgress;
+      settingsSubmitBtn.textContent = isGameInProgress ? '設定変更不可（ゲーム中）' : '設定更新';
+    }
 
     // Update theme checkboxes
     this.updateThemeCheckboxes();
@@ -447,6 +469,7 @@ export class GameApp {
     const themesContainer = document.getElementById('themes-container');
     if (!themesContainer || !this.gameState.session) return;
 
+    const isGameInProgress = this.gameState.session.gameState === 'playing';
     themesContainer.innerHTML = '';
     
     topicsData.topic.themes.forEach(theme => {
@@ -455,7 +478,7 @@ export class GameApp {
       const themeEl = document.createElement('label');
       themeEl.className = 'theme-checkbox';
       themeEl.innerHTML = `
-        <input type="checkbox" name="themes" value="${theme.name}" ${isSelected ? 'checked' : ''}>
+        <input type="checkbox" name="themes" value="${theme.name}" ${isSelected ? 'checked' : ''} ${isGameInProgress ? 'disabled' : ''}>
         <span>${theme.name}</span>
       `;
       
@@ -727,11 +750,23 @@ export class GameApp {
     const timerDisplay = document.getElementById('timer-display');
     
     if (timerValue) {
-      timerValue.textContent = this.currentTimeLeft.toString();
+      // Format time as MM:SS
+      const minutes = Math.floor(this.currentTimeLeft / 60);
+      const seconds = this.currentTimeLeft % 60;
+      timerValue.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
     
     if (timerDisplay) {
       timerDisplay.classList.remove('warning', 'critical');
+      
+      // Update timer text based on game state
+      const isDrawer = this.gameState.currentPlayer?.id === this.gameState.session?.currentDrawer;
+      const actionText = isDrawer ? '描画時間' : '回答時間';
+      
+      const timerLabel = timerDisplay.querySelector('.timer-label');
+      if (timerLabel) {
+        timerLabel.textContent = `${actionText}: `;
+      }
       
       if (this.currentTimeLeft <= 10) {
         timerDisplay.classList.add('critical');

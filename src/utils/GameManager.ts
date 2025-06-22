@@ -302,13 +302,19 @@ export class GameManager {
       return { isCorrect: false };
     }
 
-    // Check if this player already answered correctly this turn
+    // Check if someone already answered correctly this turn (only one correct answer per topic)
     if (!session.answeredPlayers) {
       session.answeredPlayers = [];
     }
     
-    if (session.answeredPlayers.includes(playerId)) {
-      console.log('Player already answered correctly this turn:', playerId);
+    if (session.answeredPlayers.length > 0) {
+      console.log('Someone already answered correctly this turn');
+      return { isCorrect: false };
+    }
+
+    // Don't allow the drawer to answer
+    if (playerId === session.currentDrawer) {
+      console.log('Drawer cannot answer');
       return { isCorrect: false };
     }
 
@@ -319,7 +325,7 @@ export class GameManager {
     );
 
     if (isCorrect) {
-      // Add player to answered list to prevent duplicate scoring
+      // Mark this turn as answered (only first correct answer counts)
       session.answeredPlayers.push(playerId);
       
       this.clearTurnTimer(session.id);
@@ -330,7 +336,7 @@ export class GameManager {
       if (drawer) drawer.score += session.settings.drawerPoints;
       
       await FirebaseSessionManager.saveSession(session);
-      this.emit('correctAnswer', { session, player, answer });
+      this.emit('correctAnswer', { session, playerId, answer });
       
       setTimeout(async () => await this.nextTurn(session), 5000);
     }
