@@ -582,9 +582,11 @@ export class GameApp {
         const isCurrentPlayerDrawer = this.gameState.currentPlayer?.id === drawer.id;
         currentTurnEl.innerHTML = `
           <div class="turn-info">
-            <div>ラウンド ${this.gameState.session.round} - ターン ${this.gameState.session.turn}</div>
-            <div>描き手: ${drawer.name}</div>
-            ${isCurrentPlayerDrawer ? `<div class="topic">お題: ${topic.displayName}</div>` : '<div>お題を当ててください！</div>'}
+            <div class="round-display">ラウンド ${this.gameState.session.round} - ターン ${this.gameState.session.turn}</div>
+            <div class="drawer-display ${isCurrentPlayerDrawer ? 'is-current-player' : ''}">
+              🎨 描き手: <strong>${drawer.name}</strong> ${isCurrentPlayerDrawer ? '(あなた)' : ''}
+            </div>
+            ${isCurrentPlayerDrawer ? `<div class="topic">お題: ${topic.displayName}</div>` : '<div class="guessing-message">🔍 お題を当ててください！</div>'}
           </div>
         `;
       }
@@ -677,8 +679,12 @@ export class GameApp {
 
   private handleCorrectAnswer(data: { session: GameSession; playerId: string; answer: string }): void {
     this.gameState.session = data.session;
-    this.updateGameUI();
     this.stopTimer();
+    
+    // Show topic reveal and countdown
+    this.showTopicRevealAndCountdown(data.playerId, data.answer);
+    
+    this.updateGameUI();
   }
 
   private startTimer(): void {
@@ -776,7 +782,13 @@ export class GameApp {
 
     const sortedPlayers = [...this.gameState.session.players].sort((a, b) => b.score - a.score);
     
-    let resultsHTML = '<div class="game-results"><h2>ゲーム結果</h2><div class="rankings">';
+    let resultsHTML = `
+      <div class="modal">
+        <div class="modal-content">
+          <div class="game-results">
+            <h2>🎉 ゲーム終了 🎉</h2>
+            <div class="rankings">
+    `;
     
     sortedPlayers.forEach((player, index) => {
       const rank = index + 1;
@@ -791,14 +803,89 @@ export class GameApp {
       `;
     });
     
-    resultsHTML += '</div></div>';
+    resultsHTML += `
+            </div>
+            <div class="results-actions">
+              <button class="btn btn-primary" id="back-to-lobby">ロビーに戻る</button>
+              <button class="btn btn-secondary" id="leave-session-results">セッションを退出</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
     
-    // Show results in a modal or dedicated area
-    const resultsContainer = document.getElementById('game-results-container');
-    if (resultsContainer) {
-      resultsContainer.innerHTML = resultsHTML;
-      resultsContainer.style.display = 'block';
+    // Show results in modal
+    document.body.insertAdjacentHTML('beforeend', resultsHTML);
+    
+    // Bind button events
+    const backToLobbyBtn = document.getElementById('back-to-lobby');
+    const leaveSessionBtn = document.getElementById('leave-session-results');
+    
+    backToLobbyBtn?.addEventListener('click', () => {
+      this.hideGameResults();
+      // Reset game state but keep players in lobby
+      if (this.gameState.session) {
+        this.gameState.session.gameState = 'waiting';
+        this.gameState.session.players.forEach(p => p.isReady = false);
+        this.updateLobbyUI();
+      }
+    });
+    
+    leaveSessionBtn?.addEventListener('click', () => {
+      this.hideGameResults();
+      this.leaveSession();
+    });
+  }
+  
+  private hideGameResults(): void {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+      modal.remove();
     }
+  }
+
+  private showTopicRevealAndCountdown(correctPlayerId: string, _answer: string): void {
+    if (!this.gameState.session || !this.gameState.session.currentTopic) return;
+
+    const currentTurnEl = document.getElementById('current-turn-display');
+    if (!currentTurnEl) return;
+
+    const correctPlayer = this.gameState.session.players.find(p => p.id === correctPlayerId);
+    const topic = this.gameState.session.currentTopic;
+
+    // Show topic reveal
+    currentTurnEl.innerHTML = `
+      <div class="topic-reveal">
+        <div class="correct-answer-announcement">
+          🎉 正解！ 🎉
+        </div>
+        <div class="correct-player">
+          ${correctPlayer?.name || 'プレイヤー'}が正解しました！
+        </div>
+        <div class="topic-reveal-display">
+          お題は「<strong>${topic.displayName}</strong>」でした
+        </div>
+        <div class="next-turn-countdown">
+          次のターンまで: <span id="countdown-timer">5</span>秒
+        </div>
+      </div>
+    `;
+
+    // Start countdown
+    let countdown = 5;
+    const countdownTimer = document.getElementById('countdown-timer');
+    
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdownTimer) {
+        countdownTimer.textContent = countdown.toString();
+      }
+      
+      if (countdown <= 0) {
+        clearInterval(countdownInterval);
+        // Update UI will be called when next turn starts
+      }
+    }, 1000);
   }
 
   // Real-time synchronization methods

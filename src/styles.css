@@ -365,6 +365,31 @@ p {
     gap: 0.5rem;
 }
 
+.round-display {
+    font-size: 1rem;
+    color: #666;
+}
+
+.drawer-display {
+    font-size: 1.3rem;
+    padding: 0.5rem;
+    background: #fff3e0;
+    border-radius: 8px;
+    border-left: 4px solid #ff9800;
+}
+
+.drawer-display.is-current-player {
+    background: #e8f5e8;
+    border-left-color: #4CAF50;
+    color: #2e7d32;
+}
+
+.guessing-message {
+    font-size: 1.1rem;
+    color: #1976d2;
+    font-weight: 600;
+}
+
 .topic {
     color: #1976d2;
     font-size: 1.2rem;
@@ -647,6 +672,14 @@ input[type="range"] {
 .score {
     font-weight: 600;
     color: #4CAF50;
+}
+
+.results-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
 }
 
 /* Responsive Design */
@@ -999,5 +1032,68 @@ input[type="range"] {
     }
     100% {
         box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+}
+
+/* Topic Reveal and Countdown */
+.topic-reveal {
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #4CAF50, #81C784);
+    border-radius: 15px;
+    color: white;
+    animation: topicRevealPulse 1s ease-in-out;
+}
+
+.correct-answer-announcement {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    animation: bounce 1s ease-in-out;
+}
+
+.correct-player {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.topic-reveal-display {
+    font-size: 1.5rem;
+    background: rgba(255,255,255,0.2);
+    padding: 1rem;
+    border-radius: 10px;
+    margin: 1rem 0;
+    font-weight: bold;
+}
+
+.next-turn-countdown {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+@keyframes topicRevealPulse {
+    0% {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
     }
 }

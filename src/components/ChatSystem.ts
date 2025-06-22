@@ -22,11 +22,22 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
+    // Use compositionstart/end to track IME state more reliably
+    let isComposing = false;
+    
+    this.chatInput.addEventListener('compositionstart', () => {
+      isComposing = true;
+    });
+    
+    this.chatInput.addEventListener('compositionend', () => {
+      isComposing = false;
+    });
+    
     this.chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        // Check if IME composition is active (Japanese input)
-        if (e.isComposing || e.keyCode === 229) {
-          return; // Don't send message during IME composition
+        // Don't send if IME is composing
+        if (isComposing || e.isComposing) {
+          return;
         }
         e.preventDefault();
         this.sendMessage();

@@ -317,7 +317,7 @@ export class GameManager {
       await FirebaseSessionManager.saveSession(session);
       this.emit('correctAnswer', { session, player, answer });
       
-      setTimeout(async () => await this.nextTurn(session), 2000);
+      setTimeout(async () => await this.nextTurn(session), 5000);
     }
 
     return { 
