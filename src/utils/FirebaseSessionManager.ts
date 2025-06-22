@@ -14,7 +14,7 @@ interface FirebaseSessionData {
   timestamp: number;
   lastActivity: number;
   chatMessages: ChatMessage[];
-  currentDrawing?: DrawingData;
+  currentDrawing: DrawingData | null;
 }
 
 export class FirebaseSessionManager {
@@ -27,21 +27,22 @@ export class FirebaseSessionManager {
     if (!isFirebaseEnabled || !database) {
       console.warn('Firebase not available, using fallback storage');
       this.saveFallback(session.id, {
-        session,
+        session: this.cleanSessionData(session),
         timestamp: Date.now(),
         lastActivity: Date.now(),
-        chatMessages: session.chatMessages || [],
+        chatMessages: session.chatMessages,
         currentDrawing: session.currentDrawing
       });
       return;
     }
 
     try {
+      const cleanedSession = this.cleanSessionData(session);
       const sessionData: FirebaseSessionData = {
-        session,
+        session: cleanedSession,
         timestamp: Date.now(),
         lastActivity: Date.now(),
-        chatMessages: session.chatMessages || [],
+        chatMessages: session.chatMessages,
         currentDrawing: session.currentDrawing
       };
 
@@ -53,10 +54,10 @@ export class FirebaseSessionManager {
       console.error('Failed to save session to Firebase:', error);
       // Fallback to localStorage
       this.saveFallback(session.id, {
-        session,
+        session: this.cleanSessionData(session),
         timestamp: Date.now(),
         lastActivity: Date.now(),
-        chatMessages: session.chatMessages || [],
+        chatMessages: session.chatMessages,
         currentDrawing: session.currentDrawing
       });
     }
@@ -156,9 +157,6 @@ export class FirebaseSessionManager {
       const session = await this.getSession(sessionId);
       if (!session) return;
       
-      if (!session.chatMessages) {
-        session.chatMessages = [];
-      }
       session.chatMessages.push(message);
       await this.saveSession(session);
       return;
@@ -173,9 +171,6 @@ export class FirebaseSessionManager {
       // Fallback to updating the entire session
       const session = await this.getSession(sessionId);
       if (session) {
-        if (!session.chatMessages) {
-          session.chatMessages = [];
-        }
         session.chatMessages.push(message);
         await this.saveSession(session);
       }
@@ -332,6 +327,17 @@ export class FirebaseSessionManager {
       const sessionData = sessions[id];
       return this.isSessionValid(sessionData);
     });
+  }
+
+  // データをクリーンアップしてFirebaseに保存可能にする
+  private static cleanSessionData(session: GameSession): any {
+    return JSON.parse(JSON.stringify(session, (_key, value) => {
+      // undefinedの値をnullに変換するか、削除する
+      if (value === undefined) {
+        return null;
+      }
+      return value;
+    }));
   }
 
   static cleanup(): void {

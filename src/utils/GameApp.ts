@@ -71,6 +71,11 @@ export class GameApp {
     }
   }
 
+  // main.tsから呼び出されるパブリックメソッド
+  async refreshSessionList(): Promise<void> {
+    await this.loadSessionList();
+  }
+
   private handleSessionSelect(sessionId: string, hasPassword: boolean): void {
     this.selectedSessionId = sessionId;
     if (hasPassword) {
@@ -174,6 +179,11 @@ export class GameApp {
     const targetScreen = document.getElementById(`${screenName}-screen`);
     if (targetScreen) {
       targetScreen.classList.add('active');
+    }
+
+    // ホーム画面に戻ったときにセッション一覧を更新
+    if (screenName === 'home') {
+      this.loadSessionList();
     }
   }
 
@@ -462,6 +472,8 @@ export class GameApp {
     this.gameState.messages = [];
 
     this.showScreen('home');
+    // ホーム画面に戻ったときにセッション一覧を更新
+    this.loadSessionList();
   }
 
   private handleSettingsUpdate(e: Event): void {

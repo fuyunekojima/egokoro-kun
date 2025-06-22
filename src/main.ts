@@ -70,6 +70,11 @@ function showHomeScreen(): void {
     if (homeScreen) {
         homeScreen.classList.add('active');
     }
+    
+    // セッション一覧を更新
+    if ((window as any).gameApp) {
+        (window as any).gameApp.refreshSessionList();
+    }
 }
 
 function addKeyboardShortcuts(): void {

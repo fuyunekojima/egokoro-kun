@@ -25,7 +25,7 @@ export interface Player {
 export interface GameSession {
   id: string;
   name: string;
-  password?: string;
+  password: string | null;
   players: Player[];
   currentDrawer?: string;
   currentTopic?: TopicValue;
@@ -34,8 +34,8 @@ export interface GameSession {
   round: number;
   turn: number;
   usedDrawers: string[];
-  chatMessages?: ChatMessage[];
-  currentDrawing?: DrawingData;
+  chatMessages: ChatMessage[];
+  currentDrawing: DrawingData | null;
 }
 
 export interface GameSettings {

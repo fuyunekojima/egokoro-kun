@@ -67,7 +67,7 @@ export class GameManager {
     const session: GameSession = {
       id: sessionId,
       name: sessionName,
-      password,
+      password: password || null, // undefinedの代わりにnullを使用
       players: [hostPlayer],
       gameState: 'waiting',
       settings: {
@@ -80,7 +80,9 @@ export class GameManager {
       },
       round: 1,
       turn: 1,
-      usedDrawers: []
+      usedDrawers: [],
+      chatMessages: [], // 初期化
+      currentDrawing: null // 初期化
     };
 
     await FirebaseSessionManager.saveSession(session);
