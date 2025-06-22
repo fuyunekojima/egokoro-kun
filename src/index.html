@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エゴコロくん - お絵描きクイズゲーム</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen active">
+        <div class="container">
+            <h1>🎨 エゴコロくん</h1>
+            <p>みんなでお絵描きクイズを楽しもう！</p>
+            <div class="button-group">
+                <button id="create-session-btn" class="btn btn-primary">セッションを作成</button>
+                <button id="join-session-btn" class="btn btn-secondary">セッションに参加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Session Screen -->
+    <div id="create-session-screen" class="screen">
+        <div class="container">
+            <h2>セッション作成</h2>
+            <form id="create-session-form" class="form">
+                <div class="form-group">
+                    <label for="host-name">あなたの名前</label>
+                    <input type="text" id="host-name" name="host-name" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="session-name">セッション名</label>
+                    <input type="text" id="session-name" name="session-name" required maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label for="password">パスワード（任意）</label>
+                    <input type="password" id="password" name="password" maxlength="20">
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">作成</button>
+                    <button type="button" class="btn btn-secondary" onclick="history.back()">戻る</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Join Session Screen -->
+    <div id="join-session-screen" class="screen">
+        <div class="container">
+            <h2>セッション参加</h2>
+            <form id="join-session-form" class="form">
+                <div class="form-group">
+                    <label for="player-name">あなたの名前</label>
+                    <input type="text" id="player-name" name="player-name" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="session-id">セッションID</label>
+                    <input type="text" id="session-id" name="session-id" required>
+                </div>
+                <div class="form-group">
+                    <label for="join-password">パスワード（必要な場合）</label>
+                    <input type="password" id="join-password" name="password" maxlength="20">
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">参加</button>
+                    <button type="button" class="btn btn-secondary" onclick="history.back()">戻る</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Game Lobby Screen -->
+    <div id="game-lobby-screen" class="screen">
+        <div class="game-layout">
+            <!-- Header -->
+            <header class="game-header">
+                <div class="session-info">
+                    <h2 id="session-name-display"></h2>
+                    <p>セッションID: <span id="session-id-display"></span></p>
+                </div>
+                <div class="game-controls">
+                    <button id="ready-btn" class="btn btn-primary">準備完了</button>
+                    <button id="start-game-btn" class="btn btn-success" style="display: none;">ゲーム開始</button>
+                    <button id="leave-session-btn" class="btn btn-danger">退出</button>
+                </div>
+            </header>
+
+            <!-- Main Game Area -->
+            <main class="game-main">
+                <!-- Left Sidebar -->
+                <aside class="sidebar left-sidebar">
+                    <div class="players-section">
+                        <h3>プレイヤー</h3>
+                        <div id="players-list" class="players-list"></div>
+                    </div>
+
+                    <!-- Settings (Host only) -->
+                    <div id="settings-container" class="settings-section" style="display: none;">
+                        <h3>設定</h3>
+                        <form id="settings-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="max-rounds">ラウンド数</label>
+                                <input type="number" id="max-rounds" name="max-rounds" min="1" max="10" value="2">
+                            </div>
+                            <div class="form-group">
+                                <label for="correct-points">正解者ポイント</label>
+                                <input type="number" id="correct-points" name="correct-points" min="1" max="100" value="10">
+                            </div>
+                            <div class="form-group">
+                                <label for="drawer-points">描き手ポイント</label>
+                                <input type="number" id="drawer-points" name="drawer-points" min="1" max="100" value="5">
+                            </div>
+                            <div class="form-group">
+                                <label>テーマ選択</label>
+                                <div id="themes-container" class="themes-container"></div>
+                            </div>
+                            <button type="submit" class="btn btn-small">設定更新</button>
+                        </form>
+                    </div>
+                </aside>
+
+                <!-- Canvas Area -->
+                <div class="canvas-area">
+                    <div id="current-turn-display" class="turn-display">
+                        <div>ゲーム待機中</div>
+                    </div>
+                    
+                    <div class="canvas-container">
+                        <canvas id="drawing-canvas" class="drawing-canvas"></canvas>
+                        <div id="floating-messages" class="floating-messages"></div>
+                    </div>
+
+                    <!-- Drawing Tools -->
+                    <div class="drawing-tools">
+                        <div class="tool-group">
+                            <label>色</label>
+                            <div class="color-palette">
+                                <button class="color-btn active" data-color="#000000" style="background-color: #000000;"></button>
+                                <button class="color-btn" data-color="#ff0000" style="background-color: #ff0000;"></button>
+                                <button class="color-btn" data-color="#00ff00" style="background-color: #00ff00;"></button>
+                                <button class="color-btn" data-color="#0000ff" style="background-color: #0000ff;"></button>
+                                <button class="color-btn" data-color="#ffff00" style="background-color: #ffff00;"></button>
+                                <button class="color-btn" data-color="#ff00ff" style="background-color: #ff00ff;"></button>
+                                <button class="color-btn" data-color="#00ffff" style="background-color: #00ffff;"></button>
+                                <button class="color-btn" data-color="#ffa500" style="background-color: #ffa500;"></button>
+                                <button class="color-btn" data-color="#800080" style="background-color: #800080;"></button>
+                                <button class="color-btn" data-color="#8b4513" style="background-color: #8b4513;"></button>
+                            </div>
+                        </div>
+                        
+                        <div class="tool-group">
+                            <label for="line-width">太さ: <span id="line-width-value">5</span></label>
+                            <input type="range" id="line-width" min="1" max="20" value="5">
+                        </div>
+                        
+                        <div class="tool-group">
+                            <label for="opacity">透明度: <span id="opacity-value">1.0</span></label>
+                            <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="1">
+                        </div>
+                        
+                        <button id="clear-canvas-btn" class="btn btn-warning">全消し</button>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar -->
+                <aside class="sidebar right-sidebar">
+                    <div id="chat-container" class="chat-container">
+                        <h3>チャット</h3>
+                        <div id="chat-messages" class="chat-messages"></div>
+                        <div class="chat-input-container">
+                            <input type="text" id="chat-input" class="chat-input" placeholder="ひらがなで答えを入力...">
+                            <button class="send-button btn btn-small">送信</button>
+                        </div>
+                    </div>
+                </aside>
+            </main>
+        </div>
+
+        <!-- Game Results Modal -->
+        <div id="game-results-container" class="modal" style="display: none;">
+            <div class="modal-content">
+                <!-- Results will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="main.ts"></script>
+</body>
+</html>

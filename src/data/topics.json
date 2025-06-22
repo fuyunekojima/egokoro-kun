@@ -1,0 +1,96 @@
+{
+  "topic": {
+    "themes": [
+      {
+        "name": "音楽",
+        "values": [
+          {
+            "displayName": "四重奏",
+            "answerNames": [
+              "しじゅうそう",
+              "かるてっと"
+            ]
+          },
+          {
+            "displayName": "ハ長調",
+            "answerNames": [
+              "はちょうちょう",
+              "しーめじゃーきー"
+            ]
+          },
+          {
+            "displayName": "ピアノ",
+            "answerNames": [
+              "ぴあの"
+            ]
+          },
+          {
+            "displayName": "ギター",
+            "answerNames": [
+              "ぎたー"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "動物",
+        "values": [
+          {
+            "displayName": "象",
+            "answerNames": [
+              "ぞう"
+            ]
+          },
+          {
+            "displayName": "猫",
+            "answerNames": [
+              "ねこ"
+            ]
+          },
+          {
+            "displayName": "犬",
+            "answerNames": [
+              "いぬ"
+            ]
+          },
+          {
+            "displayName": "鳥",
+            "answerNames": [
+              "とり"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "食べ物",
+        "values": [
+          {
+            "displayName": "寿司",
+            "answerNames": [
+              "すし",
+              "おすし"
+            ]
+          },
+          {
+            "displayName": "ラーメン",
+            "answerNames": [
+              "らーめん"
+            ]
+          },
+          {
+            "displayName": "カレー",
+            "answerNames": [
+              "かれー"
+            ]
+          },
+          {
+            "displayName": "ハンバーガー",
+            "answerNames": [
+              "はんばーがー"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
