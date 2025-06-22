@@ -589,10 +589,6 @@ input[type="range"] {
     border: 2px solid #ddd;
     border-radius: 6px;
     font-size: 0.9rem;
-    resize: none;
-    font-family: inherit;
-    min-height: 40px;
-    max-height: 80px;
 }
 
 .chat-input:focus {

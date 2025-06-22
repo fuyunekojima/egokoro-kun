@@ -2,7 +2,7 @@ import { ChatMessage } from '../types';
 
 export class ChatSystem {
   private chatContainer: HTMLElement;
-  private chatInput: HTMLTextAreaElement;
+  private chatInput: HTMLInputElement;
   private chatMessages: HTMLElement;
   private floatingContainer: HTMLElement;
   private messages: ChatMessage[] = [];
@@ -10,7 +10,7 @@ export class ChatSystem {
 
   constructor(
     chatContainer: HTMLElement,
-    chatInput: HTMLTextAreaElement,
+    chatInput: HTMLInputElement,
     chatMessages: HTMLElement,
     floatingContainer: HTMLElement
   ) {
@@ -22,11 +22,11 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
-    // textareaを使用してIME問題を根本的に解決
-    // Ctrl+Enter または Shift+Enter で送信
-    this.chatInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.shiftKey)) {
-        e.preventDefault();
+    // 正しいIME対応：keydownではなくkeyupを使用
+    // IME確定のEnterはkeyupで検出できる
+    this.chatInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) {
+        // IME変換中でない場合のみ送信
         this.sendMessage();
       }
     });
