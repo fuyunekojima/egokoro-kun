@@ -1,14 +1,14 @@
 import { GameSession, Player, TopicValue, GameSettings, ChatMessage, DrawingData } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import topicsData from '../data/topics.json';
-import { SimpleSessionManager } from './SimpleSessionManager';
+import { FirebaseSessionManager } from './FirebaseSessionManager';
 
 export class GameManager {
   private eventListeners: Map<string, Function[]> = new Map();
 
   constructor() {
     // Cleanup expired sessions on initialization
-    SimpleSessionManager.cleanup();
+    FirebaseSessionManager.cleanup();
   }
 
   async createSession(hostName: string, sessionName: string, password?: string): Promise<GameSession> {
@@ -39,12 +39,12 @@ export class GameManager {
       usedDrawers: []
     };
 
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     return session;
   }
 
   async joinSession(sessionId: string, playerName: string, password?: string): Promise<{ success: boolean; session?: GameSession; player?: Player; error?: string }> {
-    const session = SimpleSessionManager.getSession(sessionId);
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) {
       return { success: false, error: 'セッションが見つかりません' };
     }
@@ -71,14 +71,14 @@ export class GameManager {
     };
 
     session.players.push(newPlayer);
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     this.emit('playerJoined', { session, player: newPlayer });
     
     return { success: true, session, player: newPlayer };
   }
 
-  leaveSession(sessionId: string, playerId: string): boolean {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async leaveSession(sessionId: string, playerId: string): Promise<boolean> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) return false;
 
     const playerIndex = session.players.findIndex((p: Player) => p.id === playerId);
@@ -88,33 +88,33 @@ export class GameManager {
     session.players.splice(playerIndex, 1);
 
     if (session.players.length === 0) {
-      SimpleSessionManager.deleteSession(sessionId);
+      await FirebaseSessionManager.deleteSession(sessionId);
     } else {
       if (player.isHost && session.players.length > 0) {
         session.players[0].isHost = true;
       }
-      SimpleSessionManager.saveSession(session);
+      await FirebaseSessionManager.saveSession(session);
     }
 
     this.emit('playerLeft', { session, player });
     return true;
   }
 
-  toggleReady(sessionId: string, playerId: string): boolean {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async toggleReady(sessionId: string, playerId: string): Promise<boolean> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) return false;
 
     const player = session.players.find((p: Player) => p.id === playerId);
     if (!player) return false;
 
     player.isReady = !player.isReady;
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     this.emit('playerReadyChanged', { session, player });
     return true;
   }
 
-  startGame(sessionId: string, hostId: string): boolean {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async startGame(sessionId: string, hostId: string): Promise<boolean> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) return false;
 
     const host = session.players.find((p: Player) => p.id === hostId);
@@ -128,22 +128,22 @@ export class GameManager {
     session.turn = 1;
     session.usedDrawers = [];
     
-    this.selectNextDrawer(session);
+    await this.selectNextDrawer(session);
     this.selectRandomTopic(session);
     
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     this.emit('gameStarted', { session });
     return true;
   }
 
-  private selectNextDrawer(session: GameSession): void {
+  private async selectNextDrawer(session: GameSession): Promise<void> {
     const availableDrawers = session.players.filter((p: Player) => !session.usedDrawers.includes(p.id));
     
     if (availableDrawers.length === 0) {
       session.usedDrawers = [];
       session.round++;
       if (session.round > session.settings.maxRounds) {
-        this.endGame(session);
+        await this.endGame(session);
         return;
       }
     }
@@ -169,8 +169,8 @@ export class GameManager {
     }
   }
 
-  checkAnswer(sessionId: string, playerId: string, answer: string): { isCorrect: boolean; correctAnswer?: string } {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async checkAnswer(sessionId: string, playerId: string, answer: string): Promise<{ isCorrect: boolean; correctAnswer?: string }> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session || !session.currentTopic) {
       return { isCorrect: false };
     }
@@ -188,10 +188,10 @@ export class GameManager {
       if (player) player.score += session.settings.correctAnswerPoints;
       if (drawer) drawer.score += session.settings.drawerPoints;
       
-      SimpleSessionManager.saveSession(session);
+      await FirebaseSessionManager.saveSession(session);
       this.emit('correctAnswer', { session, player, answer });
       
-      setTimeout(() => this.nextTurn(session), 2000);
+      setTimeout(async () => await this.nextTurn(session), 2000);
     }
 
     return { 
@@ -200,35 +200,35 @@ export class GameManager {
     };
   }
 
-  private nextTurn(session: GameSession): void {
-    this.selectNextDrawer(session);
+  private async nextTurn(session: GameSession): Promise<void> {
+    await this.selectNextDrawer(session);
     this.selectRandomTopic(session);
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     this.emit('nextTurn', { session });
   }
 
-  private endGame(session: GameSession): void {
+  private async endGame(session: GameSession): Promise<void> {
     session.gameState = 'finished';
     session.players.forEach((p: Player) => p.isReady = false);
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     this.emit('gameEnded', { session });
   }
 
-  updateSettings(sessionId: string, playerId: string, settings: Partial<GameSettings>): boolean {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async updateSettings(sessionId: string, playerId: string, settings: Partial<GameSettings>): Promise<boolean> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) return false;
 
     const player = session.players.find((p: Player) => p.id === playerId);
     if (!player || !player.isHost) return false;
 
     Object.assign(session.settings, settings);
-    SimpleSessionManager.saveSession(session);
+    await FirebaseSessionManager.saveSession(session);
     this.emit('settingsUpdated', { session });
     return true;
   }
 
-  addChatMessage(sessionId: string, playerId: string, message: string): ChatMessage | null {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async addChatMessage(sessionId: string, playerId: string, message: string): Promise<ChatMessage | null> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) return null;
 
     const player = session.players.find((p: Player) => p.id === playerId);
@@ -243,30 +243,30 @@ export class GameManager {
     };
 
     if (session.gameState === 'playing' && session.currentDrawer !== playerId) {
-      const { isCorrect } = this.checkAnswer(sessionId, playerId, message);
+      const { isCorrect } = await this.checkAnswer(sessionId, playerId, message);
       chatMessage.isCorrect = isCorrect;
     }
 
-    SimpleSessionManager.addChatMessage(sessionId, chatMessage);
+    await FirebaseSessionManager.addChatMessage(sessionId, chatMessage);
     this.emit('chatMessage', { session, message: chatMessage });
     return chatMessage;
   }
 
-  broadcastDrawing(sessionId: string, drawingData: DrawingData): void {
-    const session = SimpleSessionManager.getSession(sessionId);
+  async broadcastDrawing(sessionId: string, drawingData: DrawingData): Promise<void> {
+    const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) return;
 
-    SimpleSessionManager.updateDrawing(sessionId, drawingData);
+    await FirebaseSessionManager.updateDrawing(sessionId, drawingData);
     this.emit('drawingUpdate', { session, drawingData });
   }
 
   // Debug and utility methods
   async getAllSessions(): Promise<string[]> {
-    return SimpleSessionManager.getSessionIds();
+    return await FirebaseSessionManager.getSessionIds();
   }
 
   async getSession(sessionId: string): Promise<GameSession | null> {
-    return SimpleSessionManager.getSession(sessionId);
+    return await FirebaseSessionManager.getSession(sessionId);
   }
 
   // Event system
