@@ -22,12 +22,42 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
-    // 正しいIME対応：keydownではなくkeyupを使用
-    // IME確定のEnterはkeyupで検出できる
-    this.chatInput.addEventListener('keyup', (e) => {
-      if (e.key === 'Enter' && !e.isComposing) {
-        // IME変換中でない場合のみ送信
-        this.sendMessage();
+    // Qiita記事を参考にした確実なIME対応
+    let isComposing = false;
+    
+    // compositionstart/endでIME状態を追跡
+    this.chatInput.addEventListener('compositionstart', () => {
+      isComposing = true;
+    });
+    
+    this.chatInput.addEventListener('compositionend', () => {
+      isComposing = false;
+    });
+    
+    // keydownイベントでIME状態を複数の方法でチェック
+    this.chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        // 記事の方法：複数の条件でIME状態をチェック
+        const isIMEActive = e.isComposing || 
+                           (e as any).key === 'Process' || 
+                           e.keyCode === 229 || 
+                           isComposing;
+        
+        if (!isIMEActive) {
+          // IME中でない場合のみ送信
+          e.preventDefault();
+          this.sendMessage();
+        }
+      }
+    });
+
+    // input eventでも追加チェック（記事の方法2）
+    this.chatInput.addEventListener('input', (e) => {
+      const inputEvent = e as InputEvent;
+      const imeTypes = ['insertCompositionText', 'deleteCompositionText', 'insertFromComposition', 'deleteByComposition'];
+      if (imeTypes.includes(inputEvent.inputType || '')) {
+        // IME入力中の場合のロギング
+        console.log('IME input detected:', inputEvent.inputType);
       }
     });
 
