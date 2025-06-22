@@ -445,7 +445,26 @@ export class GameApp {
   }
 
   private async toggleReady(): Promise<void> {
-    if (!this.gameState.session || !this.gameState.currentPlayer) return;
+    if (!this.gameState.session || !this.gameState.currentPlayer) {
+      console.error('Cannot toggle ready: missing session or currentPlayer', {
+        hasSession: !!this.gameState.session,
+        hasCurrentPlayer: !!this.gameState.currentPlayer
+      });
+      return;
+    }
+
+    // currentPlayerの情報を最新のセッション情報で更新
+    const latestCurrentPlayer = this.gameState.session.players.find(p => p.id === this.gameState.currentPlayer!.id);
+    if (latestCurrentPlayer) {
+      this.gameState.currentPlayer = latestCurrentPlayer;
+    }
+
+    console.log('Attempting to toggle ready for:', {
+      sessionId: this.gameState.session.id,
+      playerId: this.gameState.currentPlayer.id,
+      playerName: this.gameState.currentPlayer.name,
+      currentReady: this.gameState.currentPlayer.isReady
+    });
 
     try {
       const success = await this.gameManager.toggleReady(
@@ -456,6 +475,8 @@ export class GameApp {
       if (!success) {
         console.error('Failed to toggle ready state');
         this.showError('準備状態の変更に失敗しました');
+      } else {
+        console.log('Successfully toggled ready state');
       }
     } catch (error) {
       console.error('Error toggling ready state:', error);

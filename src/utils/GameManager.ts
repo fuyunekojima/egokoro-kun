@@ -155,16 +155,36 @@ export class GameManager {
   }
 
   async toggleReady(sessionId: string, playerId: string): Promise<boolean> {
+    console.log('toggleReady called with:', { sessionId, playerId });
+    
     const session = await FirebaseSessionManager.getSession(sessionId);
-    if (!session) return false;
+    if (!session) {
+      console.error('Session not found:', sessionId);
+      return false;
+    }
+    
+    console.log('Session found, players:', session.players.map(p => ({ id: p.id, name: p.name, isReady: p.isReady })));
 
     const player = session.players.find((p: Player) => p.id === playerId);
-    if (!player) return false;
+    if (!player) {
+      console.error('Player not found in session:', playerId, 'Available players:', session.players.map(p => p.id));
+      return false;
+    }
 
+    console.log('Player found:', { id: player.id, name: player.name, currentReady: player.isReady });
+    
     player.isReady = !player.isReady;
-    await FirebaseSessionManager.saveSession(session);
-    this.emit('playerReadyChanged', { session, player });
-    return true;
+    console.log('Toggling ready state to:', player.isReady);
+    
+    try {
+      await FirebaseSessionManager.saveSession(session);
+      console.log('Session saved successfully');
+      this.emit('playerReadyChanged', { session, player });
+      return true;
+    } catch (error) {
+      console.error('Failed to save session:', error);
+      return false;
+    }
   }
 
   async startGame(sessionId: string, hostId: string): Promise<boolean> {
