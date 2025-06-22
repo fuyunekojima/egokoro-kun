@@ -308,6 +308,13 @@ export class GameApp {
       this.gameState.isConnected = true;
 
       this.startRealtimeSync(result.session!.id);
+      
+      // UI更新前に少し待機してFirebaseの同期を確実にする
+      setTimeout(() => {
+        this.updateLobbyUI();
+        this.updateGameUI();
+      }, 100);
+      
       this.showGameLobby();
     }).catch(error => {
       console.error('Failed to join session:', error);

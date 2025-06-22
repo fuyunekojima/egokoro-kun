@@ -148,10 +148,23 @@ export class GameManager {
     try {
       await FirebaseSessionManager.saveSession(session);
       console.log('Session saved successfully after player join');
-      this.emit('playerJoined', { session, player: newPlayer });
-      console.log('PlayerJoined event emitted');
       
-      return { success: true, session, player: newPlayer };
+      // Firebase保存後、最新のセッションを取得して確認
+      const savedSession = await FirebaseSessionManager.getSession(sessionId);
+      if (savedSession) {
+        console.log('Verified saved session:', {
+          playersCount: savedSession.players.length,
+          playerNames: savedSession.players.map(p => p.name)
+        });
+        this.emit('playerJoined', { session: savedSession, player: newPlayer });
+        console.log('PlayerJoined event emitted');
+        
+        return { success: true, session: savedSession, player: newPlayer };
+      } else {
+        console.error('Failed to retrieve saved session');
+        this.emit('playerJoined', { session, player: newPlayer });
+        return { success: true, session, player: newPlayer };
+      }
     } catch (error) {
       console.error('Failed to save session after player join:', error);
       return { success: false, error: 'セッションの保存に失敗しました' };

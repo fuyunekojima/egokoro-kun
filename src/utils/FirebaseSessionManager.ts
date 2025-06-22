@@ -80,7 +80,20 @@ export class FirebaseSessionManager {
         if (this.isSessionValid(sessionData)) {
           // Update last activity
           await this.updateLastActivity(sessionId);
-          return sessionData.session;
+          
+          // Ensure required fields are initialized
+          const session = sessionData.session;
+          if (!session.chatMessages) {
+            session.chatMessages = [];
+          }
+          if (!session.currentDrawing) {
+            session.currentDrawing = null;
+          }
+          if (!session.usedDrawers) {
+            session.usedDrawers = [];
+          }
+          
+          return session;
         } else {
           // Session expired, remove it
           await this.deleteSession(sessionId);
@@ -93,7 +106,21 @@ export class FirebaseSessionManager {
       console.error('Failed to get session from Firebase:', error);
       // Fallback to localStorage
       const fallbackData = this.getFallback(sessionId);
-      return fallbackData && this.isSessionValid(fallbackData) ? fallbackData.session : null;
+      if (fallbackData && this.isSessionValid(fallbackData)) {
+        const session = fallbackData.session;
+        // Ensure required fields are initialized
+        if (!session.chatMessages) {
+          session.chatMessages = [];
+        }
+        if (!session.currentDrawing) {
+          session.currentDrawing = null;
+        }
+        if (!session.usedDrawers) {
+          session.usedDrawers = [];
+        }
+        return session;
+      }
+      return null;
     }
   }
 
@@ -331,13 +358,26 @@ export class FirebaseSessionManager {
 
   // データをクリーンアップしてFirebaseに保存可能にする
   private static cleanSessionData(session: GameSession): any {
-    return JSON.parse(JSON.stringify(session, (_key, value) => {
+    const cleaned = JSON.parse(JSON.stringify(session, (_key, value) => {
       // undefinedの値をnullに変換するか、削除する
       if (value === undefined) {
         return null;
       }
       return value;
     }));
+    
+    // 必須フィールドの確認と初期化
+    if (!cleaned.chatMessages || cleaned.chatMessages === null) {
+      cleaned.chatMessages = [];
+    }
+    if (!cleaned.currentDrawing) {
+      cleaned.currentDrawing = null;
+    }
+    if (!cleaned.usedDrawers) {
+      cleaned.usedDrawers = [];
+    }
+    
+    return cleaned;
   }
 
   static cleanup(): void {
