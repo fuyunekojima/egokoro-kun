@@ -138,6 +138,17 @@ p {
     font-size: 0.9rem;
 }
 
+.btn-outline {
+    background: transparent;
+    color: #4CAF50;
+    border: 2px solid #4CAF50;
+}
+
+.btn-outline:hover:not(:disabled) {
+    background: #4CAF50;
+    color: white;
+}
+
 .button-group {
     display: flex;
     gap: 1rem;

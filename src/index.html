@@ -15,6 +15,12 @@
             <div class="button-group">
                 <button id="create-session-btn" class="btn btn-primary">セッションを作成</button>
                 <button id="join-session-btn" class="btn btn-secondary">セッションに参加</button>
+                <button id="debug-sessions-btn" class="btn btn-outline" style="margin-top: 10px;">デバッグ: セッション一覧</button>
+            </div>
+            <div id="debug-sessions" style="display: none; margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                <h3>アクティブなセッション</h3>
+                <div id="sessions-list"></div>
+                <button id="refresh-sessions-btn" class="btn btn-small">更新</button>
             </div>
         </div>
     </div>

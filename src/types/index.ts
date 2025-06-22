@@ -34,6 +34,8 @@ export interface GameSession {
   round: number;
   turn: number;
   usedDrawers: string[];
+  chatMessages?: ChatMessage[];
+  currentDrawing?: DrawingData;
 }
 
 export interface GameSettings {

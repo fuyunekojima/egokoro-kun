@@ -46,6 +46,12 @@ export class GameApp {
     createSessionBtn?.addEventListener('click', this.showCreateSessionForm.bind(this));
     joinSessionBtn?.addEventListener('click', this.showJoinSessionForm.bind(this));
 
+    // Debug functionality
+    const debugSessionsBtn = document.getElementById('debug-sessions-btn') as HTMLButtonElement;
+    const refreshSessionsBtn = document.getElementById('refresh-sessions-btn') as HTMLButtonElement;
+    debugSessionsBtn?.addEventListener('click', this.toggleDebugSessions.bind(this));
+    refreshSessionsBtn?.addEventListener('click', this.refreshSessionsList.bind(this));
+
     // Create session form
     const createForm = document.getElementById('create-session-form') as HTMLFormElement;
     createForm?.addEventListener('submit', this.handleCreateSession.bind(this));
@@ -145,12 +151,16 @@ export class GameApp {
       return;
     }
 
-    const session = this.gameManager.createSession(hostName, sessionName, password);
-    this.gameState.session = session;
-    this.gameState.currentPlayer = session.players[0];
-    this.gameState.isConnected = true;
+    this.gameManager.createSession(hostName, sessionName, password).then(session => {
+      this.gameState.session = session;
+      this.gameState.currentPlayer = session.players[0];
+      this.gameState.isConnected = true;
 
-    this.showGameLobby();
+      this.showGameLobby();
+    }).catch(error => {
+      console.error('Failed to create session:', error);
+      this.showError('セッションの作成に失敗しました');
+    });
   }
 
   private handleJoinSession(e: Event): void {
@@ -167,18 +177,21 @@ export class GameApp {
       return;
     }
 
-    const result = this.gameManager.joinSession(sessionId, playerName, password);
-    
-    if (!result.success) {
-      this.showError(result.error || '参加に失敗しました');
-      return;
-    }
+    this.gameManager.joinSession(sessionId, playerName, password).then(result => {
+      if (!result.success) {
+        this.showError(result.error || '参加に失敗しました');
+        return;
+      }
 
-    this.gameState.session = result.session!;
-    this.gameState.currentPlayer = result.player!;
-    this.gameState.isConnected = true;
+      this.gameState.session = result.session!;
+      this.gameState.currentPlayer = result.player!;
+      this.gameState.isConnected = true;
 
-    this.showGameLobby();
+      this.showGameLobby();
+    }).catch(error => {
+      console.error('Failed to join session:', error);
+      this.showError('セッションへの参加に失敗しました');
+    });
   }
 
   private showGameLobby(): void {
@@ -271,8 +284,9 @@ export class GameApp {
 
     if (startGameBtn) {
       startGameBtn.style.display = this.gameState.currentPlayer.isHost ? 'block' : 'none';
-      startGameBtn.disabled = !this.gameManager.canStartGame(this.gameState.session.id) ||
-                              this.gameState.session.gameState === 'playing';
+      const allReady = this.gameState.session.players.every(p => p.isReady);
+      const hasEnoughPlayers = this.gameState.session.players.length >= 2;
+      startGameBtn.disabled = !allReady || !hasEnoughPlayers || this.gameState.session.gameState === 'playing';
     }
   }
 
@@ -320,18 +334,16 @@ export class GameApp {
   private toggleReady(): void {
     if (!this.gameState.session || !this.gameState.currentPlayer) return;
 
-    const newReadyState = !this.gameState.currentPlayer.isReady;
-    this.gameManager.setPlayerReady(
+    this.gameManager.toggleReady(
       this.gameState.session.id,
-      this.gameState.currentPlayer.id,
-      newReadyState
+      this.gameState.currentPlayer.id
     );
   }
 
   private startGame(): void {
-    if (!this.gameState.session) return;
+    if (!this.gameState.session || !this.gameState.currentPlayer) return;
 
-    this.gameManager.startGame(this.gameState.session.id);
+    this.gameManager.startGame(this.gameState.session.id, this.gameState.currentPlayer.id);
   }
 
   private leaveSession(): void {
@@ -509,6 +521,54 @@ export class GameApp {
     if (resultsContainer) {
       resultsContainer.innerHTML = resultsHTML;
       resultsContainer.style.display = 'block';
+    }
+  }
+
+  // Debug methods
+  private toggleDebugSessions(): void {
+    const debugContainer = document.getElementById('debug-sessions');
+    if (debugContainer) {
+      const isVisible = debugContainer.style.display !== 'none';
+      debugContainer.style.display = isVisible ? 'none' : 'block';
+      if (!isVisible) {
+        this.refreshSessionsList();
+      }
+    }
+  }
+
+  private async refreshSessionsList(): Promise<void> {
+    const sessionsList = document.getElementById('sessions-list');
+    if (!sessionsList) return;
+
+    try {
+      const sessions = await this.gameManager.getAllSessions();
+      
+      if (sessions.length === 0) {
+        sessionsList.innerHTML = '<p>アクティブなセッションはありません</p>';
+        return;
+      }
+
+      let html = '<div class="sessions-grid">';
+      for (const sessionId of sessions) {
+        const session = await this.gameManager.getSession(sessionId);
+        if (session) {
+          html += `
+            <div class="session-item" style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px;">
+              <strong>${session.name}</strong><br>
+              <small>ID: ${sessionId}</small><br>
+              <small>プレイヤー: ${session.players.length}人</small><br>
+              <small>状態: ${session.gameState}</small>
+              <button onclick="navigator.clipboard.writeText('${sessionId}')" class="btn btn-small" style="margin-top: 5px;">IDをコピー</button>
+            </div>
+          `;
+        }
+      }
+      html += '</div>';
+      
+      sessionsList.innerHTML = html;
+    } catch (error) {
+      console.error('Failed to refresh sessions list:', error);
+      sessionsList.innerHTML = '<p>セッション一覧の取得に失敗しました</p>';
     }
   }
 }
