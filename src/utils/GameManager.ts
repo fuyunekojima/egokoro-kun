@@ -2,17 +2,48 @@ import { GameSession, Player, TopicValue, GameSettings, ChatMessage, DrawingData
 import { v4 as uuidv4 } from 'uuid';
 import topicsData from '../data/topics.json';
 import { FirebaseSessionManager } from './FirebaseSessionManager';
+import { authenticateAnonymously, onAuthStateChange } from './firebase';
 
 export class GameManager {
   private eventListeners: Map<string, Function[]> = new Map();
   private turnTimers: Map<string, NodeJS.Timeout> = new Map();
+  private isAuthenticated: boolean = false;
 
   constructor() {
-    // Cleanup expired sessions on initialization
-    FirebaseSessionManager.cleanup();
+    this.initializeAuth();
+  }
+
+  private async initializeAuth(): Promise<void> {
+    // 認証状態の監視を開始
+    onAuthStateChange((isAuthenticated) => {
+      this.isAuthenticated = isAuthenticated;
+      console.log('Authentication state changed:', isAuthenticated);
+    });
+
+    // 匿名認証を実行
+    try {
+      await authenticateAnonymously();
+      // Cleanup expired sessions after authentication
+      await FirebaseSessionManager.cleanup();
+    } catch (error) {
+      console.error('Failed to initialize authentication:', error);
+    }
+  }
+
+  private async ensureAuthenticated(): Promise<boolean> {
+    if (this.isAuthenticated) {
+      return true;
+    }
+
+    console.log('Not authenticated, attempting to authenticate...');
+    return await authenticateAnonymously();
   }
 
   async createSession(hostName: string, sessionName: string, password?: string): Promise<GameSession> {
+    if (!(await this.ensureAuthenticated())) {
+      throw new Error('Authentication failed');
+    }
+
     const sessionId = uuidv4();
     const hostPlayer: Player = {
       id: uuidv4(),
@@ -46,6 +77,10 @@ export class GameManager {
   }
 
   async joinSession(sessionId: string, playerName: string, password?: string): Promise<{ success: boolean; session?: GameSession; player?: Player; error?: string }> {
+    if (!(await this.ensureAuthenticated())) {
+      return { success: false, error: 'Authentication failed' };
+    }
+
     const session = await FirebaseSessionManager.getSession(sessionId);
     if (!session) {
       return { success: false, error: 'セッションが見つかりません' };
@@ -301,6 +336,11 @@ export class GameManager {
   }
 
   async getSessionList(): Promise<SessionListItem[]> {
+    if (!(await this.ensureAuthenticated())) {
+      console.warn('Not authenticated, returning empty session list');
+      return [];
+    }
+
     const sessionIds = await FirebaseSessionManager.getSessionIds();
     const sessions: SessionListItem[] = [];
 
@@ -321,6 +361,23 @@ export class GameManager {
     }
 
     return sessions;
+  }
+
+  // Real-time synchronization methods
+  subscribeToSession(sessionId: string, callback: (session: GameSession | null) => void): () => void {
+    return FirebaseSessionManager.subscribeToSession(sessionId, callback);
+  }
+
+  subscribeToDrawing(sessionId: string, callback: (drawingData: DrawingData | null) => void): () => void {
+    return FirebaseSessionManager.subscribeToDrawing(sessionId, callback);
+  }
+
+  subscribeToPlayerStates(sessionId: string, callback: (players: Player[]) => void): () => void {
+    return FirebaseSessionManager.subscribeToPlayerStates(sessionId, callback);
+  }
+
+  removeSessionListener(sessionId: string): void {
+    FirebaseSessionManager.removeListener(sessionId);
   }
 
   // Event system

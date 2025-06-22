@@ -242,6 +242,46 @@ export class FirebaseSessionManager {
     }
   }
 
+  static subscribeToDrawing(sessionId: string, callback: (drawingData: DrawingData | null) => void): () => void {
+    if (!isFirebaseEnabled || !database) {
+      console.warn('Firebase not available, drawing subscription not supported');
+      return () => {};
+    }
+
+    const drawingRef = ref(database, `${this.SESSION_PATH}/${sessionId}/currentDrawing`);
+    
+    const unsubscribe = onValue(drawingRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const drawingData: DrawingData = snapshot.val();
+        callback(drawingData);
+      } else {
+        callback(null);
+      }
+    });
+
+    return unsubscribe;
+  }
+
+  static subscribeToPlayerStates(sessionId: string, callback: (players: any[]) => void): () => void {
+    if (!isFirebaseEnabled || !database) {
+      console.warn('Firebase not available, player states subscription not supported');
+      return () => {};
+    }
+
+    const playersRef = ref(database, `${this.SESSION_PATH}/${sessionId}/session/players`);
+    
+    const unsubscribe = onValue(playersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const players = snapshot.val();
+        callback(players);
+      } else {
+        callback([]);
+      }
+    });
+
+    return unsubscribe;
+  }
+
   private static async updateLastActivity(sessionId: string): Promise<void> {
     if (!isFirebaseEnabled || !database) return;
 

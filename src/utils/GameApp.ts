@@ -13,6 +13,9 @@ export class GameApp {
   private selectedSessionId?: string;
   private timerInterval?: number;
   private currentTimeLeft: number = 0;
+  private sessionUnsubscribe?: () => void;
+  private drawingUnsubscribe?: () => void;
+  private playersUnsubscribe?: () => void;
   private gameState: GameState = {
     session: null,
     currentPlayer: null,
@@ -247,6 +250,7 @@ export class GameApp {
       this.gameState.currentPlayer = session.players[0];
       this.gameState.isConnected = true;
 
+      this.startRealtimeSync(session.id);
       this.showGameLobby();
     }).catch(error => {
       console.error('Failed to create session:', error);
@@ -278,6 +282,7 @@ export class GameApp {
       this.gameState.currentPlayer = result.player!;
       this.gameState.isConnected = true;
 
+      this.startRealtimeSync(result.session!.id);
       this.showGameLobby();
     }).catch(error => {
       console.error('Failed to join session:', error);
@@ -445,6 +450,9 @@ export class GameApp {
     if (!this.gameState.session || !this.gameState.currentPlayer) return;
 
     this.gameManager.leaveSession(this.gameState.session.id, this.gameState.currentPlayer.id);
+    this.stopRealtimeSync(); // Stop real-time synchronization
+    this.stopTimer(); // Stop any running timer
+    
     this.gameState.session = null;
     this.gameState.currentPlayer = null;
     this.gameState.isConnected = false;
@@ -680,6 +688,62 @@ export class GameApp {
       resultsContainer.style.display = 'block';
     }
   }
+
+  // Real-time synchronization methods
+  private startRealtimeSync(sessionId: string): void {
+    this.stopRealtimeSync(); // Clean up any existing subscriptions
+
+    // Subscribe to session updates
+    this.sessionUnsubscribe = this.gameManager.subscribeToSession(sessionId, (session) => {
+      if (session) {
+        console.log('Session updated:', session);
+        this.gameState.session = session;
+        this.updateLobbyUI();
+        this.updateGameUI();
+      }
+    });
+
+    // Subscribe to drawing updates
+    this.drawingUnsubscribe = this.gameManager.subscribeToDrawing(sessionId, (drawingData) => {
+      if (drawingData && this.drawingCanvas) {
+        console.log('Drawing updated:', drawingData);
+        this.drawingCanvas.drawFromData(drawingData);
+      }
+    });
+
+    // Subscribe to player state updates
+    this.playersUnsubscribe = this.gameManager.subscribeToPlayerStates(sessionId, (players) => {
+      if (this.gameState.session) {
+        console.log('Players updated:', players);
+        this.gameState.session.players = players;
+        this.updateLobbyUI();
+        this.updateGameUI();
+      }
+    });
+
+    console.log('Real-time synchronization started for session:', sessionId);
+  }
+
+  private stopRealtimeSync(): void {
+    if (this.sessionUnsubscribe) {
+      this.sessionUnsubscribe();
+      this.sessionUnsubscribe = undefined;
+    }
+
+    if (this.drawingUnsubscribe) {
+      this.drawingUnsubscribe();
+      this.drawingUnsubscribe = undefined;
+    }
+
+    if (this.playersUnsubscribe) {
+      this.playersUnsubscribe();
+      this.playersUnsubscribe = undefined;
+    }
+
+    console.log('Real-time synchronization stopped');
+  }
+
+
 
   // Debug methods
   private toggleDebugSessions(): void {
