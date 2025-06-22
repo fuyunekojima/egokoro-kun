@@ -8,9 +8,10 @@ export class GameManager {
   private eventListeners: Map<string, Function[]> = new Map();
   private turnTimers: Map<string, NodeJS.Timeout> = new Map();
   private isAuthenticated: boolean = false;
+  private initializationPromise: Promise<void>;
 
   constructor() {
-    this.initializeAuth();
+    this.initializationPromise = this.initializeAuth();
   }
 
   private async initializeAuth(): Promise<void> {
@@ -18,16 +19,26 @@ export class GameManager {
     onAuthStateChange((isAuthenticated) => {
       this.isAuthenticated = isAuthenticated;
       console.log('Authentication state changed:', isAuthenticated);
+      
+      // 認証完了後にクリーンアップを実行
+      if (isAuthenticated) {
+        FirebaseSessionManager.cleanup();
+      }
     });
 
     // 匿名認証を実行
     try {
-      await authenticateAnonymously();
-      // Cleanup expired sessions after authentication
-      await FirebaseSessionManager.cleanup();
+      const success = await authenticateAnonymously();
+      if (!success) {
+        console.error('Authentication failed, multiplayer features may not work');
+      }
     } catch (error) {
       console.error('Failed to initialize authentication:', error);
     }
+  }
+
+  async waitForInitialization(): Promise<void> {
+    await this.initializationPromise;
   }
 
   private async ensureAuthenticated(): Promise<boolean> {

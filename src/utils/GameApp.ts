@@ -41,11 +41,14 @@ export class GameApp {
     this.gameManager.on('settingsUpdated', this.handleSettingsUpdated.bind(this));
   }
 
-  initializeUI(): void {
+  async initializeUI(): Promise<void> {
     this.showScreen('home');
     this.initializeSessionList();
     this.bindUIEvents();
-    this.loadSessionList();
+    
+    // GameManagerの初期化を待ってからセッション一覧を読み込み
+    await this.gameManager.waitForInitialization();
+    await this.loadSessionList();
   }
 
   private initializeSessionList(): void {

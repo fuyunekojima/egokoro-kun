@@ -4,8 +4,18 @@ import { GameApp } from './utils/GameApp';
 const gameApp = new GameApp();
 
 // Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', () => {
-    gameApp.initializeUI();
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await gameApp.initializeUI();
+        console.log('Game app initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize game app:', error);
+        // Show user-friendly error message
+        const errorMsg = document.createElement('div');
+        errorMsg.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #ff4444; color: white; padding: 10px 20px; border-radius: 5px; z-index: 1000;';
+        errorMsg.textContent = 'アプリケーションの初期化に失敗しました。ページを再読み込みしてください。';
+        document.body.appendChild(errorMsg);
+    }
     
     // Add some UI enhancements
     initializeUIEnhancements();
