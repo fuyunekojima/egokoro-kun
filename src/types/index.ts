@@ -36,6 +36,7 @@ export interface GameSession {
   usedDrawers: string[];
   chatMessages: ChatMessage[];
   currentDrawing: DrawingData | null;
+  answeredPlayers?: string[]; // プレイヤーIDのリスト（重複スコアリング防止用）
 }
 
 export interface GameSettings {

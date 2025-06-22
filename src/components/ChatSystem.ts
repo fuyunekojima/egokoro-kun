@@ -22,40 +22,87 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
-    // Track IME composition state more precisely
+    // Track IME composition state and prevent duplicate sends
     let isComposing = false;
     let lastCompositionEnd = 0;
+    let lastSentMessage = '';
+    let lastSentTime = 0;
     
     this.chatInput.addEventListener('compositionstart', () => {
       isComposing = true;
       console.log('Composition started');
     });
     
-    this.chatInput.addEventListener('compositionend', () => {
+    this.chatInput.addEventListener('compositionend', (e) => {
       isComposing = false;
       lastCompositionEnd = Date.now();
-      console.log('Composition ended');
+      console.log('Composition ended, data:', e.data);
+    });
+    
+    // Use input event for more reliable detection
+    this.chatInput.addEventListener('input', (e) => {
+      const inputEvent = e as InputEvent;
+      if (inputEvent.inputType === 'insertCompositionText') {
+        console.log('Composition text inserted');
+      }
     });
     
     this.chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        // Check if we're in composition or just finished composition
-        const timeSinceCompositionEnd = Date.now() - lastCompositionEnd;
+        const currentMessage = this.chatInput.value.trim();
+        const currentTime = Date.now();
+        const timeSinceCompositionEnd = currentTime - lastCompositionEnd;
+        const timeSinceLastSent = currentTime - lastSentTime;
         
-        if (isComposing || e.isComposing || timeSinceCompositionEnd < 50) {
-          console.log('Blocking send due to IME state:', { isComposing, timeSinceCompositionEnd });
-          return; // Don't send during or immediately after composition
+        console.log('Enter pressed:', {
+          isComposing,
+          'e.isComposing': e.isComposing,
+          timeSinceCompositionEnd,
+          timeSinceLastSent,
+          currentMessage,
+          lastSentMessage
+        });
+        
+        // Prevent send if:
+        // 1. Currently composing
+        // 2. Just finished composition (Google IME sends Enter immediately after)
+        // 3. Same message sent within 500ms (duplicate prevention)
+        if (isComposing || 
+            e.isComposing || 
+            timeSinceCompositionEnd < 200 ||
+            (currentMessage === lastSentMessage && timeSinceLastSent < 500)) {
+          console.log('Blocking send');
+          return;
         }
         
         e.preventDefault();
-        this.sendMessage();
+        if (currentMessage) {
+          lastSentMessage = currentMessage;
+          lastSentTime = currentTime;
+          this.sendMessage();
+        }
       }
     });
 
     // Send button if exists
     const sendButton = this.chatContainer.querySelector('.send-button') as HTMLButtonElement;
     if (sendButton) {
-      sendButton.addEventListener('click', () => this.sendMessage());
+      sendButton.addEventListener('click', () => {
+        const currentMessage = this.chatInput.value.trim();
+        const currentTime = Date.now();
+        const timeSinceLastSent = currentTime - lastSentTime;
+        
+        // Prevent duplicate button clicks
+        if (currentMessage === lastSentMessage && timeSinceLastSent < 500) {
+          return;
+        }
+        
+        if (currentMessage) {
+          lastSentMessage = currentMessage;
+          lastSentTime = currentTime;
+          this.sendMessage();
+        }
+      });
     }
   }
 

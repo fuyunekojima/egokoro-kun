@@ -82,7 +82,8 @@ export class GameManager {
       turn: 1,
       usedDrawers: [],
       chatMessages: [], // 初期化
-      currentDrawing: null // 初期化
+      currentDrawing: null, // 初期化
+      answeredPlayers: [] // 回答済みプレイヤーリスト初期化
     };
 
     await FirebaseSessionManager.saveSession(session);
@@ -241,6 +242,7 @@ export class GameManager {
     session.round = 1;
     session.turn = 1;
     session.usedDrawers = [];
+    session.answeredPlayers = []; // 回答済みプレイヤーリストをリセット
     
     await this.selectNextDrawer(session);
     this.selectRandomTopic(session);
@@ -300,6 +302,16 @@ export class GameManager {
       return { isCorrect: false };
     }
 
+    // Check if this player already answered correctly this turn
+    if (!session.answeredPlayers) {
+      session.answeredPlayers = [];
+    }
+    
+    if (session.answeredPlayers.includes(playerId)) {
+      console.log('Player already answered correctly this turn:', playerId);
+      return { isCorrect: false };
+    }
+
     const normalizedAnswer = answer.toLowerCase().trim();
     const isCorrect = session.currentTopic.answerNames.some((correctAnswer: string) => 
       correctAnswer.toLowerCase().includes(normalizedAnswer) || 
@@ -307,6 +319,9 @@ export class GameManager {
     );
 
     if (isCorrect) {
+      // Add player to answered list to prevent duplicate scoring
+      session.answeredPlayers.push(playerId);
+      
       this.clearTurnTimer(session.id);
       const player = session.players.find((p: Player) => p.id === playerId);
       const drawer = session.players.find((p: Player) => p.id === session.currentDrawer);
@@ -328,6 +343,10 @@ export class GameManager {
 
   private async nextTurn(session: GameSession): Promise<void> {
     this.clearTurnTimer(session.id);
+    
+    // Reset answered players for new turn
+    session.answeredPlayers = [];
+    
     await this.selectNextDrawer(session);
     this.selectRandomTopic(session);
     await FirebaseSessionManager.saveSession(session);
