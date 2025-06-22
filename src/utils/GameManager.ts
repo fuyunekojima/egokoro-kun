@@ -1,10 +1,11 @@
-import { GameSession, Player, TopicValue, GameSettings, ChatMessage, DrawingData } from '../types';
+import { GameSession, Player, TopicValue, GameSettings, ChatMessage, DrawingData, SessionListItem } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import topicsData from '../data/topics.json';
 import { FirebaseSessionManager } from './FirebaseSessionManager';
 
 export class GameManager {
   private eventListeners: Map<string, Function[]> = new Map();
+  private turnTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
     // Cleanup expired sessions on initialization
@@ -32,7 +33,8 @@ export class GameManager {
         correctAnswerPoints: 10,
         drawerPoints: 5,
         selectedThemes: ['音楽', '動物', '食べ物'],
-        timeLimit: 60
+        timeLimit: 120, // 120秒のタイムリミット
+        maxPlayers: 8 // 最大8人
       },
       round: 1,
       turn: 1,
@@ -55,6 +57,10 @@ export class GameManager {
 
     if (session.gameState === 'playing') {
       return { success: false, error: 'ゲーム中のため参加できません' };
+    }
+
+    if (session.players.length >= session.settings.maxPlayers) {
+      return { success: false, error: 'セッションが満員です' };
     }
 
     const existingPlayer = session.players.find((p: Player) => p.name === playerName);
@@ -132,6 +138,7 @@ export class GameManager {
     this.selectRandomTopic(session);
     
     await FirebaseSessionManager.saveSession(session);
+    this.startTurnTimer(session);
     this.emit('gameStarted', { session });
     return true;
   }
@@ -182,6 +189,7 @@ export class GameManager {
     );
 
     if (isCorrect) {
+      this.clearTurnTimer(session.id);
       const player = session.players.find((p: Player) => p.id === playerId);
       const drawer = session.players.find((p: Player) => p.id === session.currentDrawer);
       
@@ -201,13 +209,36 @@ export class GameManager {
   }
 
   private async nextTurn(session: GameSession): Promise<void> {
+    this.clearTurnTimer(session.id);
     await this.selectNextDrawer(session);
     this.selectRandomTopic(session);
     await FirebaseSessionManager.saveSession(session);
+    this.startTurnTimer(session);
     this.emit('nextTurn', { session });
   }
 
+  private startTurnTimer(session: GameSession): void {
+    this.clearTurnTimer(session.id);
+    
+    const timer = setTimeout(async () => {
+      // タイムアウト時の処理
+      this.emit('turnTimeout', { session });
+      await this.nextTurn(session);
+    }, session.settings.timeLimit * 1000);
+    
+    this.turnTimers.set(session.id, timer);
+  }
+
+  private clearTurnTimer(sessionId: string): void {
+    const timer = this.turnTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      this.turnTimers.delete(sessionId);
+    }
+  }
+
   private async endGame(session: GameSession): Promise<void> {
+    this.clearTurnTimer(session.id);
     session.gameState = 'finished';
     session.players.forEach((p: Player) => p.isReady = false);
     await FirebaseSessionManager.saveSession(session);
@@ -267,6 +298,29 @@ export class GameManager {
 
   async getSession(sessionId: string): Promise<GameSession | null> {
     return await FirebaseSessionManager.getSession(sessionId);
+  }
+
+  async getSessionList(): Promise<SessionListItem[]> {
+    const sessionIds = await FirebaseSessionManager.getSessionIds();
+    const sessions: SessionListItem[] = [];
+
+    for (const sessionId of sessionIds) {
+      const session = await FirebaseSessionManager.getSession(sessionId);
+      if (session) {
+        const host = session.players.find(p => p.isHost);
+        sessions.push({
+          id: session.id,
+          name: session.name,
+          hasPassword: !!session.password,
+          playerCount: session.players.length,
+          maxPlayers: session.settings.maxPlayers,
+          hostName: host?.name || 'Unknown',
+          gameState: session.gameState
+        });
+      }
+    }
+
+    return sessions;
   }
 
   // Event system

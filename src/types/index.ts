@@ -43,7 +43,8 @@ export interface GameSettings {
   correctAnswerPoints: number;
   drawerPoints: number;
   selectedThemes: string[];
-  timeLimit: number;
+  timeLimit: number; // 描画・回答時間制限（秒）
+  maxPlayers: number; // 最大プレイヤー数（2-8人）
 }
 
 export interface ChatMessage {
@@ -71,4 +72,19 @@ export interface GameState {
   currentPlayer: Player | null;
   messages: ChatMessage[];
   isConnected: boolean;
+}
+
+export interface SessionListItem {
+  id: string;
+  name: string;
+  hasPassword: boolean;
+  playerCount: number;
+  maxPlayers: number;
+  hostName: string;
+  gameState: 'waiting' | 'playing' | 'finished';
+}
+
+export interface SessionFilter {
+  showPasswordProtected: boolean;
+  showPublic: boolean;
 }

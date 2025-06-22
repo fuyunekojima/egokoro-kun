@@ -1,6 +1,7 @@
 import { GameManager } from './GameManager';
 import { DrawingCanvas } from '../components/DrawingCanvas';
 import { ChatSystem } from '../components/ChatSystem';
+import { SessionList } from '../components/SessionList';
 import { GameSession, Player, GameState, DrawingData, ChatMessage } from '../types';
 import topicsData from '../data/topics.json';
 
@@ -8,6 +9,10 @@ export class GameApp {
   private gameManager: GameManager;
   private drawingCanvas?: DrawingCanvas;
   private chatSystem?: ChatSystem;
+  private sessionList?: SessionList;
+  private selectedSessionId?: string;
+  private timerInterval?: number;
+  private currentTimeLeft: number = 0;
   private gameState: GameState = {
     session: null,
     currentPlayer: null,
@@ -35,16 +40,47 @@ export class GameApp {
 
   initializeUI(): void {
     this.showScreen('home');
+    this.initializeSessionList();
     this.bindUIEvents();
+    this.loadSessionList();
+  }
+
+  private initializeSessionList(): void {
+    const container = document.getElementById('session-list-container');
+    if (container) {
+      this.sessionList = new SessionList(
+        container,
+        this.handleSessionSelect.bind(this),
+        this.loadSessionList.bind(this)
+      );
+    }
+  }
+
+  private async loadSessionList(): Promise<void> {
+    try {
+      const sessions = await this.gameManager.getSessionList();
+      this.sessionList?.updateSessions(sessions);
+    } catch (error) {
+      console.error('Failed to load session list:', error);
+    }
+  }
+
+  private handleSessionSelect(sessionId: string, hasPassword: boolean): void {
+    this.selectedSessionId = sessionId;
+    if (hasPassword) {
+      this.showPasswordModal();
+    } else {
+      this.showJoinSessionForm(sessionId);
+    }
   }
 
   private bindUIEvents(): void {
     // Home screen events
     const createSessionBtn = document.getElementById('create-session-btn') as HTMLButtonElement;
-    const joinSessionBtn = document.getElementById('join-session-btn') as HTMLButtonElement;
+    const manualJoinBtn = document.getElementById('manual-join-btn') as HTMLButtonElement;
 
     createSessionBtn?.addEventListener('click', this.showCreateSessionForm.bind(this));
-    joinSessionBtn?.addEventListener('click', this.showJoinSessionForm.bind(this));
+    manualJoinBtn?.addEventListener('click', () => this.showJoinSessionForm());
 
     // Debug functionality
     const debugSessionsBtn = document.getElementById('debug-sessions-btn') as HTMLButtonElement;
@@ -59,6 +95,12 @@ export class GameApp {
     // Join session form
     const joinForm = document.getElementById('join-session-form') as HTMLFormElement;
     joinForm?.addEventListener('submit', this.handleJoinSession.bind(this));
+
+    // Password modal
+    const passwordForm = document.getElementById('password-form') as HTMLFormElement;
+    const cancelPasswordBtn = document.getElementById('cancel-password') as HTMLButtonElement;
+    passwordForm?.addEventListener('submit', this.handlePasswordSubmit.bind(this));
+    cancelPasswordBtn?.addEventListener('click', this.hidePasswordModal.bind(this));
 
     // Game controls
     const readyBtn = document.getElementById('ready-btn') as HTMLButtonElement;
@@ -133,8 +175,57 @@ export class GameApp {
     this.showScreen('create-session');
   }
 
-  private showJoinSessionForm(): void {
+  private showJoinSessionForm(sessionId?: string): void {
     this.showScreen('join-session');
+    if (sessionId) {
+      const sessionIdInput = document.getElementById('session-id') as HTMLInputElement;
+      if (sessionIdInput) {
+        sessionIdInput.value = sessionId;
+      }
+    }
+  }
+
+  private showPasswordModal(): void {
+    const modal = document.getElementById('password-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      const passwordInput = document.getElementById('session-password') as HTMLInputElement;
+      if (passwordInput) {
+        passwordInput.focus();
+      }
+    }
+  }
+
+  private hidePasswordModal(): void {
+    const modal = document.getElementById('password-modal');
+    if (modal) {
+      modal.style.display = 'none';
+      const passwordInput = document.getElementById('session-password') as HTMLInputElement;
+      if (passwordInput) {
+        passwordInput.value = '';
+      }
+    }
+  }
+
+  private handlePasswordSubmit(e: Event): void {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const password = formData.get('session-password') as string;
+    
+    if (!this.selectedSessionId) {
+      this.showError('セッションが選択されていません');
+      return;
+    }
+
+    this.hidePasswordModal();
+    
+    // パスワード付きでセッション参加画面を表示
+    this.showJoinSessionForm(this.selectedSessionId);
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+    if (passwordInput) {
+      passwordInput.value = password;
+    }
   }
 
   private handleCreateSession(e: Event): void {
@@ -302,10 +393,14 @@ export class GameApp {
     const maxRoundsInput = document.getElementById('max-rounds') as HTMLInputElement;
     const correctPointsInput = document.getElementById('correct-points') as HTMLInputElement;
     const drawerPointsInput = document.getElementById('drawer-points') as HTMLInputElement;
+    const maxPlayersInput = document.getElementById('max-players') as HTMLInputElement;
+    const timeLimitInput = document.getElementById('time-limit') as HTMLInputElement;
 
     if (maxRoundsInput) maxRoundsInput.value = this.gameState.session.settings.maxRounds.toString();
     if (correctPointsInput) correctPointsInput.value = this.gameState.session.settings.correctAnswerPoints.toString();
     if (drawerPointsInput) drawerPointsInput.value = this.gameState.session.settings.drawerPoints.toString();
+    if (maxPlayersInput) maxPlayersInput.value = this.gameState.session.settings.maxPlayers.toString();
+    if (timeLimitInput) timeLimitInput.value = this.gameState.session.settings.timeLimit.toString();
 
     // Update theme checkboxes
     this.updateThemeCheckboxes();
@@ -368,12 +463,16 @@ export class GameApp {
     const maxRounds = parseInt(formData.get('max-rounds') as string);
     const correctPoints = parseInt(formData.get('correct-points') as string);
     const drawerPoints = parseInt(formData.get('drawer-points') as string);
+    const maxPlayers = parseInt(formData.get('max-players') as string);
+    const timeLimit = parseInt(formData.get('time-limit') as string);
     const selectedThemes = formData.getAll('themes') as string[];
 
     this.gameManager.updateSettings(this.gameState.session.id, this.gameState.currentPlayer.id, {
       maxRounds,
       correctAnswerPoints: correctPoints,
       drawerPoints: drawerPoints,
+      maxPlayers,
+      timeLimit,
       selectedThemes
     });
   }
@@ -460,10 +559,12 @@ export class GameApp {
     this.drawingCanvas?.clear();
     this.chatSystem?.clearMessages();
     this.updateGameUI();
+    this.startTimer();
   }
 
   private handleGameEnded(data: { session: GameSession }): void {
     this.gameState.session = data.session;
+    this.stopTimer();
     this.showGameResults();
     this.updateGameUI();
   }
@@ -472,11 +573,67 @@ export class GameApp {
     this.gameState.session = data.session;
     this.drawingCanvas?.clear();
     this.updateGameUI();
+    this.startTimer();
   }
 
   private handleCorrectAnswer(data: { session: GameSession; playerId: string; answer: string }): void {
     this.gameState.session = data.session;
     this.updateGameUI();
+    this.stopTimer();
+  }
+
+  private startTimer(): void {
+    if (!this.gameState.session) return;
+    
+    this.stopTimer();
+    this.currentTimeLeft = this.gameState.session.settings.timeLimit;
+    this.updateTimerDisplay();
+    
+    const timerDisplay = document.getElementById('timer-display');
+    if (timerDisplay) {
+      timerDisplay.style.display = 'block';
+    }
+    
+    this.timerInterval = window.setInterval(() => {
+      this.currentTimeLeft--;
+      this.updateTimerDisplay();
+      
+      if (this.currentTimeLeft <= 0) {
+        this.stopTimer();
+        // タイムアウト処理はGameManagerで行われる
+      }
+    }, 1000);
+  }
+
+  private stopTimer(): void {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = undefined;
+    }
+    
+    const timerDisplay = document.getElementById('timer-display');
+    if (timerDisplay) {
+      timerDisplay.style.display = 'none';
+    }
+  }
+
+  private updateTimerDisplay(): void {
+    const timerValue = document.getElementById('timer-value');
+    const timerDisplay = document.getElementById('timer-display');
+    
+    if (timerValue) {
+      timerValue.textContent = this.currentTimeLeft.toString();
+    }
+    
+    if (timerDisplay) {
+      timerDisplay.classList.remove('warning', 'critical');
+      
+      if (this.currentTimeLeft <= 10) {
+        timerDisplay.classList.add('critical');
+      } else if (this.currentTimeLeft <= 30) {
+        timerDisplay.classList.add('warning');
+      }
+    }
   }
 
   private handleChatMessage(data: { session: GameSession; message: ChatMessage }): void {
