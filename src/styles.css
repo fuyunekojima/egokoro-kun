@@ -904,3 +904,100 @@ input[type="range"] {
         width: 100%;
     }
 }
+
+/* Game Start Animation */
+.game-start-animation {
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+    border-radius: 15px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    animation: gameStartPulse 2s ease-in-out;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.countdown-text {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    animation: countdownZoom 2s ease-in-out;
+}
+
+.round-info {
+    font-size: 1.5rem;
+    animation: slideInUp 2s ease-out;
+}
+
+.game-start-active {
+    transform: scale(1.05);
+    transition: transform 0.3s ease;
+}
+
+/* Keyframe Animations */
+@keyframes gameStartPulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes countdownZoom {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    0% {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Topic Display Enhancement */
+.topic {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    margin: 1rem 0;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    animation: topicGlow 1s ease-in-out;
+}
+
+@keyframes topicGlow {
+    0% {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    50% {
+        box-shadow: 0 10px 30px rgba(79, 172, 254, 0.5);
+    }
+    100% {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+}

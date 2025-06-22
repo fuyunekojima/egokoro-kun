@@ -650,8 +650,15 @@ export class GameApp {
     this.gameState.session = data.session;
     this.drawingCanvas?.clear();
     this.chatSystem?.clearMessages();
-    this.updateGameUI();
-    this.startTimer();
+    
+    // ゲーム開始演出を表示
+    this.showGameStartAnimation();
+    
+    // 少し遅延してからUI更新とタイマー開始
+    setTimeout(() => {
+      this.updateGameUI();
+      this.startTimer();
+    }, 2000);
   }
 
   private handleGameEnded(data: { session: GameSession }): void {
@@ -741,6 +748,27 @@ export class GameApp {
   private handleSettingsUpdated(data: { session: GameSession }): void {
     this.gameState.session = data.session;
     this.updateSettingsUI();
+  }
+
+  private showGameStartAnimation(): void {
+    const currentTurnEl = document.getElementById('current-turn-display');
+    if (!currentTurnEl || !this.gameState.session) return;
+
+    // アニメーション用のHTML
+    currentTurnEl.innerHTML = `
+      <div class="game-start-animation">
+        <div class="countdown-text">ゲーム開始！</div>
+        <div class="round-info">ラウンド ${this.gameState.session.round}</div>
+      </div>
+    `;
+
+    // CSS アニメーションクラスを追加
+    currentTurnEl.classList.add('game-start-active');
+
+    // 2秒後にアニメーション終了
+    setTimeout(() => {
+      currentTurnEl.classList.remove('game-start-active');
+    }, 2000);
   }
 
   private showGameResults(): void {

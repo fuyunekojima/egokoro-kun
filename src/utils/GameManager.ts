@@ -271,16 +271,19 @@ export class GameManager {
   private selectRandomTopic(session: GameSession): void {
     const availableTopics: TopicValue[] = [];
     
-    session.settings.selectedThemes.forEach(theme => {
-      const themeTopics = (topicsData as any)[theme];
-      if (themeTopics) {
-        availableTopics.push(...themeTopics);
+    session.settings.selectedThemes.forEach(themeName => {
+      const theme = topicsData.topic.themes.find(t => t.name === themeName);
+      if (theme) {
+        availableTopics.push(...theme.values);
       }
     });
 
     if (availableTopics.length > 0) {
       const randomTopic = availableTopics[Math.floor(Math.random() * availableTopics.length)];
       session.currentTopic = randomTopic;
+      console.log('Selected topic:', randomTopic);
+    } else {
+      console.error('No topics available for selected themes:', session.settings.selectedThemes);
     }
   }
 
