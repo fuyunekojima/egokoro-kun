@@ -22,23 +22,31 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
-    // Use compositionstart/end to track IME state more reliably
+    // Track IME composition state more precisely
     let isComposing = false;
+    let lastCompositionEnd = 0;
     
     this.chatInput.addEventListener('compositionstart', () => {
       isComposing = true;
+      console.log('Composition started');
     });
     
     this.chatInput.addEventListener('compositionend', () => {
       isComposing = false;
+      lastCompositionEnd = Date.now();
+      console.log('Composition ended');
     });
     
     this.chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        // Don't send if IME is composing
-        if (isComposing || e.isComposing) {
-          return;
+        // Check if we're in composition or just finished composition
+        const timeSinceCompositionEnd = Date.now() - lastCompositionEnd;
+        
+        if (isComposing || e.isComposing || timeSinceCompositionEnd < 50) {
+          console.log('Blocking send due to IME state:', { isComposing, timeSinceCompositionEnd });
+          return; // Don't send during or immediately after composition
         }
+        
         e.preventDefault();
         this.sendMessage();
       }

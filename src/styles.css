@@ -1097,3 +1097,125 @@ input[type="range"] {
         transform: translateY(-5px);
     }
 }
+
+/* Full-screen Topic Reveal Overlay */
+.topic-reveal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.topic-reveal-content {
+    text-align: center;
+    padding: 3rem;
+    background: linear-gradient(135deg, #4CAF50, #81C784);
+    border-radius: 20px;
+    color: white;
+    max-width: 80vw;
+    animation: scaleIn 0.6s ease-out;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.topic-reveal-overlay .correct-answer-announcement {
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    animation: bounce 1.5s ease-in-out infinite;
+}
+
+.topic-reveal-overlay .correct-player {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    font-weight: 600;
+    color: #fff3e0;
+}
+
+.topic-reveal-overlay .topic-reveal-display {
+    font-size: 2.5rem;
+    background: rgba(255,255,255,0.2);
+    padding: 1.5rem;
+    border-radius: 15px;
+    margin: 2rem 0;
+    font-weight: bold;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.next-turn-info {
+    margin-top: 2rem;
+}
+
+.next-drawer-text {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #e8f5e8;
+}
+
+.topic-reveal-overlay .next-turn-countdown {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #fff3e0;
+}
+
+.topic-reveal-overlay #countdown-timer {
+    font-size: 2.2rem;
+    color: #ffd93d;
+    font-weight: bold;
+    animation: pulse 1s infinite;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Responsive for mobile */
+@media (max-width: 768px) {
+    .topic-reveal-content {
+        padding: 2rem;
+        max-width: 95vw;
+    }
+    
+    .topic-reveal-overlay .correct-answer-announcement {
+        font-size: 2rem;
+    }
+    
+    .topic-reveal-overlay .correct-player {
+        font-size: 1.5rem;
+    }
+    
+    .topic-reveal-overlay .topic-reveal-display {
+        font-size: 1.8rem;
+        padding: 1rem;
+    }
+    
+    .next-drawer-text {
+        font-size: 1.2rem;
+    }
+    
+    .topic-reveal-overlay .next-turn-countdown {
+        font-size: 1.4rem;
+    }
+}

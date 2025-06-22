@@ -847,29 +847,34 @@ export class GameApp {
   private showTopicRevealAndCountdown(correctPlayerId: string, _answer: string): void {
     if (!this.gameState.session || !this.gameState.session.currentTopic) return;
 
-    const currentTurnEl = document.getElementById('current-turn-display');
-    if (!currentTurnEl) return;
-
     const correctPlayer = this.gameState.session.players.find(p => p.id === correctPlayerId);
     const topic = this.gameState.session.currentTopic;
 
-    // Show topic reveal
-    currentTurnEl.innerHTML = `
-      <div class="topic-reveal">
-        <div class="correct-answer-announcement">
-          🎉 正解！ 🎉
-        </div>
-        <div class="correct-player">
-          ${correctPlayer?.name || 'プレイヤー'}が正解しました！
-        </div>
-        <div class="topic-reveal-display">
-          お題は「<strong>${topic.displayName}</strong>」でした
-        </div>
-        <div class="next-turn-countdown">
-          次のターンまで: <span id="countdown-timer">5</span>秒
+    // Create full-screen overlay
+    const overlayHTML = `
+      <div class="topic-reveal-overlay">
+        <div class="topic-reveal-content">
+          <div class="correct-answer-announcement">
+            🎉 正解！ 🎉
+          </div>
+          <div class="correct-player">
+            <strong>${correctPlayer?.name || 'プレイヤー'}</strong>が正解しました！
+          </div>
+          <div class="topic-reveal-display">
+            お題は「<strong>${topic.displayName}</strong>」でした
+          </div>
+          <div class="next-turn-info">
+            <div class="next-drawer-text">次の描き手を選んでいます...</div>
+            <div class="next-turn-countdown">
+              <span id="countdown-timer">5</span>秒後に次のターンが始まります
+            </div>
+          </div>
         </div>
       </div>
     `;
+
+    // Add overlay to body
+    document.body.insertAdjacentHTML('beforeend', overlayHTML);
 
     // Start countdown
     let countdown = 5;
@@ -883,9 +888,21 @@ export class GameApp {
       
       if (countdown <= 0) {
         clearInterval(countdownInterval);
-        // Update UI will be called when next turn starts
+        // Remove overlay
+        const overlay = document.querySelector('.topic-reveal-overlay');
+        if (overlay) {
+          overlay.remove();
+        }
       }
     }, 1000);
+
+    // Auto-remove overlay after 5 seconds as fallback
+    setTimeout(() => {
+      const overlay = document.querySelector('.topic-reveal-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+    }, 5500);
   }
 
   // Real-time synchronization methods
