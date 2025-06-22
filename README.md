@@ -83,6 +83,22 @@ vercel --prod
 - **Firebase Hosting**: Google Firebaseの静的ホスティング
 - **Render**: 無料の静的サイトホスティング
 
+### トラブルシューティング
+
+#### CSSやJavaScriptが読み込まれない場合
+
+1. **Vercel/Netlify**: 自動で再デプロイされます（数分待ってください）
+2. **GitHub Pages**: Actions タブでビルドが完了するまで待ってください
+3. **手動デプロイ**: `npm run build` を実行してから再デプロイしてください
+
+#### ローカルでの確認
+
+```bash
+# ビルドして確認
+npm run build
+npm run preview
+```
+
 ## 🎯 使用方法
 
 ### 1. セッション作成
