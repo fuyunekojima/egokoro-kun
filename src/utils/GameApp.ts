@@ -591,6 +591,7 @@ export class GameApp {
     this.updateGameButtons();
     this.updateCurrentTurnDisplay();
     this.updateDrawingPermissions();
+    this.updateSettingsUI(); // ゲーム状態に応じて設定UIを更新
   }
 
   private updateCurrentTurnDisplay(): void {

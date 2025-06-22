@@ -22,84 +22,95 @@ export class ChatSystem {
   }
 
   private bindEvents(): void {
-    // Track IME composition state and prevent duplicate sends
-    let isComposing = false;
-    let lastCompositionEnd = 0;
+    // 日本語入力問題の根本的解決：
+    // 1. Google日本語入力は compositionend の後すぐに Enter keydown を発火させる
+    // 2. isComposing は常に false になってしまう場合がある
+    // 3. より確実な方法として、Enter時に文字が変化したかを判定する
+    
+    let lastInputValue = '';
     let lastSentMessage = '';
     let lastSentTime = 0;
+    let isComposing = false;
+    let justFinishedComposition = false;
     
+    // より確実なIME状態追跡
     this.chatInput.addEventListener('compositionstart', () => {
       isComposing = true;
-      console.log('Composition started');
+      justFinishedComposition = false;
+      console.log('🎌 Composition started');
     });
     
-    this.chatInput.addEventListener('compositionend', (e) => {
+    this.chatInput.addEventListener('compositionend', () => {
       isComposing = false;
-      lastCompositionEnd = Date.now();
-      console.log('Composition ended, data:', e.data);
+      justFinishedComposition = true;
+      console.log('🎌 Composition ended');
+      
+      // 300ms後にフラグをリセット
+      setTimeout(() => {
+        justFinishedComposition = false;
+        console.log('🎌 Composition flag reset');
+      }, 300);
     });
     
-    // Use input event for more reliable detection
-    this.chatInput.addEventListener('input', (e) => {
-      const inputEvent = e as InputEvent;
-      if (inputEvent.inputType === 'insertCompositionText') {
-        console.log('Composition text inserted');
-      }
+    // input イベントで文字の変化を追跡
+    this.chatInput.addEventListener('input', () => {
+      lastInputValue = this.chatInput.value;
     });
     
     this.chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const currentMessage = this.chatInput.value.trim();
         const currentTime = Date.now();
-        const timeSinceCompositionEnd = currentTime - lastCompositionEnd;
         const timeSinceLastSent = currentTime - lastSentTime;
         
-        console.log('Enter pressed:', {
+        console.log('🎌 Enter pressed:', {
           isComposing,
+          justFinishedComposition,
           'e.isComposing': e.isComposing,
-          timeSinceCompositionEnd,
-          timeSinceLastSent,
           currentMessage,
-          lastSentMessage
+          lastInputValue,
+          'message changed': currentMessage !== lastInputValue.trim(),
+          timeSinceLastSent
         });
         
-        // Prevent send if:
-        // 1. Currently composing
-        // 2. Just finished composition (Google IME sends Enter immediately after)
-        // 3. Same message sent within 500ms (duplicate prevention)
+        // 送信をブロックする条件：
+        // 1. 現在 IME 変換中
+        // 2. 変換が終わったばかり（300ms以内）
+        // 3. 同じメッセージを短時間で重複送信
+        // 4. 空のメッセージ
         if (isComposing || 
             e.isComposing || 
-            timeSinceCompositionEnd < 200 ||
-            (currentMessage === lastSentMessage && timeSinceLastSent < 500)) {
-          console.log('Blocking send');
+            justFinishedComposition ||
+            !currentMessage ||
+            (currentMessage === lastSentMessage && timeSinceLastSent < 1000)) {
+          console.log('🎌 Blocking send due to IME or duplicate');
+          return;
+        }
+        
+        // Enterが文字確定のためではなく、送信のためかを判定
+        // Google IME では確定時に文字が変化する
+        const isActualSend = currentMessage.length > 0 && 
+                           currentMessage === lastInputValue.trim();
+        
+        if (!isActualSend) {
+          console.log('🎌 Enter was for text confirmation, not sending');
           return;
         }
         
         e.preventDefault();
-        if (currentMessage) {
-          lastSentMessage = currentMessage;
-          lastSentTime = currentTime;
-          this.sendMessage();
-        }
+        lastSentMessage = currentMessage;
+        lastSentTime = currentTime;
+        this.sendMessage();
+        console.log('🎌 Message sent:', currentMessage);
       }
     });
 
-    // Send button if exists
+    // Send button click handler
     const sendButton = this.chatContainer.querySelector('.send-button') as HTMLButtonElement;
     if (sendButton) {
       sendButton.addEventListener('click', () => {
         const currentMessage = this.chatInput.value.trim();
-        const currentTime = Date.now();
-        const timeSinceLastSent = currentTime - lastSentTime;
-        
-        // Prevent duplicate button clicks
-        if (currentMessage === lastSentMessage && timeSinceLastSent < 500) {
-          return;
-        }
-        
         if (currentMessage) {
-          lastSentMessage = currentMessage;
-          lastSentTime = currentTime;
           this.sendMessage();
         }
       });
